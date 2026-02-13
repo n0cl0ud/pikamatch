@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.cache/
+.claude/
+claude.md
+*.jpg
+*.jpeg
+*.pdf
+*.png

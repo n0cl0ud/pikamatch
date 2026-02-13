@@ -1,0 +1,85 @@
+services:
+  qwen-vl:
+    image: vllm/vllm-openai:latest
+    container_name: qwen-vl
+    ports:
+      - "8001:8000"
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    command:
+      - Qwen/Qwen2.5-VL-7B-Instruct-AWQ
+      - --quantization
+      - awq
+      - --max-model-len
+      - "4096"
+      - --gpu-memory-utilization
+      - "0.65"
+      - --max-num-seqs
+      - "2"
+      - --limit-mm-per-prompt
+      - '{"image": 2}'
+      - --dtype
+      - half
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+    restart: unless-stopped
+
+  clip-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: clip-api
+    ports:
+      - "8002:8002"
+    environment:
+      - VLM_URL=http://qwen-vl:8000
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      qwen-vl:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: pikamatch-ui
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://clip-api:8002
+    depends_on:
+      clip-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  hf_cache:

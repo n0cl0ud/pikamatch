@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir \
+    streamlit==1.41.0 \
+    "httpx>=0.27.0" \
+    "Pillow>=10.0"
+
+COPY ui.py .
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "ui.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
