@@ -37,6 +37,21 @@ services:
       start_period: 300s
     restart: unless-stopped
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
   clip-api:
     build:
       context: .
@@ -46,9 +61,11 @@ services:
       - "8002:8002"
     environment:
       - VLM_URL=http://qwen-vl:8000
+      - QDRANT_URL=http://qdrant:6333
       - CUDA_VISIBLE_DEVICES=0
     volumes:
       - hf_cache:/root/.cache/huggingface
+      - indexed_pdfs:/app/indexed_pdfs
     deploy:
       resources:
         reservations:
@@ -58,6 +75,8 @@ services:
               capabilities: [gpu]
     depends_on:
       qwen-vl:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
@@ -83,3 +102,5 @@ services:
 
 volumes:
   hf_cache:
+  qdrant_data:
+  indexed_pdfs:

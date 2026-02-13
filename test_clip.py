@@ -6,9 +6,14 @@ Usage:
     python test_clip.py match photo.jpg catalogue.pdf [FORMAT]
     python test_clip.py extract catalogue.pdf [FORMAT]
     python test_clip.py batch catalogue.pdf img1.jpg img2.jpg [FORMAT]
+    python test_clip.py index catalogue1.pdf catalogue2.pdf [FORMAT]
+    python test_clip.py index-status [FORMAT]
+    python test_clip.py scan photo.jpg [FORMAT] [--threshold 0.70] [--top_k 10]
+    python test_clip.py index-remove catalogue1.pdf
+    python test_clip.py index-clear
 
-Formats:
-    (default)    Human-readable with score bars
+Options:
+    --api URL    API base URL (default: http://localhost:8002 or PIKAMATCH_API env var)
     --json       Raw JSON
     --csv        CSV (semicolon-separated, for Excel)
     --markdown   Markdown table
@@ -23,7 +28,7 @@ import sys
 
 import httpx
 
-API_URL = "http://localhost:8002"
+API_URL = os.getenv("PIKAMATCH_API", "http://localhost:8002")
 TIMEOUT = 120.0
 
 DESC_FIELDS = [
@@ -47,6 +52,14 @@ def get_format(argv: list[str]) -> str:
         if flag in argv:
             return flag.lstrip("-")
     return "pretty"
+
+
+def get_option(argv: list[str], name: str, default: str) -> str:
+    """Get a --name value option from argv."""
+    for i, arg in enumerate(argv):
+        if arg == f"--{name}" and i + 1 < len(argv):
+            return argv[i + 1]
+    return default
 
 
 # ============================================================
@@ -152,6 +165,47 @@ def pretty_batch_result(result: dict):
     print()
 
 
+def pretty_index_result(result: dict):
+    print_header("INDEX RESULT")
+    print(f"  Total vectors: {result.get('total_vectors', '?')}")
+    print(f"  Timing:        {result.get('timing_ms', '?')}ms")
+    for item in result.get("indexed", []):
+        print(f"  [OK] {item['pdf']:30s} -> {item['images']} images indexed")
+    print()
+
+
+def pretty_index_status(result: dict):
+    print_header("INDEX STATUS")
+    print(f"  Total vectors: {result.get('total_vectors', '?')}")
+    print(f"  Total PDFs:    {result.get('total_pdfs', '?')}")
+    for item in result.get("pdfs", []):
+        print(f"    {item['pdf']:30s} -> {item['images']} images")
+    print()
+
+
+def pretty_scan_result(result: dict):
+    ref = result.get("reference", {})
+    timing = result.get("timing", {})
+    print_header("SCAN RESULT")
+    print(f"  Image:    {ref.get('filename')} ({ref.get('size')})")
+    print(f"  Matches:  {result.get('total_matches', 0)}")
+    print(f"  Timing:   Search {timing.get('vector_search_ms', '?')}ms | VLM {timing.get('vlm_extraction_ms', '?')}ms | Total {timing.get('total_ms', '?')}ms")
+    for i, m in enumerate(result.get("results", [])):
+        phash = m.get("phash", {})
+        size = m.get("size_vs_ref", {})
+        label = "BEST MATCH" if i == 0 else f"Match #{i + 1}"
+        print(f"\n  --- {label} ---")
+        print(f"  PDF:      {m.get('pdf', '?')} (page {m.get('page', '?')})")
+        print(f"  Verdict:  {verdict_icon(m.get('verdict', '?'))}")
+        print(f"  Combined: {score_bar(m.get('combined_score', 0))}")
+        print(f"  CLIP:     {score_bar(m.get('clip_score', 0))}")
+        print(f"  pHash:    {score_bar(phash.get('similarity', 0))}  (distance: {phash.get('distance', 0)})")
+        if size:
+            print(f"  Size:     {size.get('ref', '?')} -> {size.get('pdf', '?')} (scale: {size.get('scale_factor', '?')})")
+        print_desc(m.get("description", {}))
+    print()
+
+
 # ============================================================
 # CSV output
 # ============================================================
@@ -230,6 +284,17 @@ def csv_batch_result(result: dict):
             row["image"] = entry.get("filename", "")
             row["pdf"] = pdf
             row["matched"] = "no"
+        writer.writerow(row)
+    print(buf.getvalue().strip())
+
+
+def csv_scan_result(result: dict):
+    ref = result.get("reference", {}).get("filename", "")
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS, delimiter=";")
+    writer.writeheader()
+    for m in result.get("results", []):
+        row = match_to_row(m, ref, m.get("pdf", ""))
         writer.writerow(row)
     print(buf.getvalue().strip())
 
@@ -318,6 +383,37 @@ def md_batch_result(result: dict):
     print()
 
 
+def md_scan_result(result: dict):
+    ref = result.get("reference", {})
+    timing = result.get("timing", {})
+    print(f"## Scan: {ref.get('filename')} ({result.get('total_matches', 0)} matches)")
+    print(f"*Search {timing.get('vector_search_ms', '?')}ms | VLM {timing.get('vlm_extraction_ms', '?')}ms | Total {timing.get('total_ms', '?')}ms*\n")
+
+    headers = ["#", "PDF", "Page", "Combined", "CLIP", "pHash", "Verdict"]
+    rows = []
+    for i, m in enumerate(result.get("results", [])):
+        ph = m.get("phash", {})
+        rows.append([
+            i + 1, m.get("pdf", "?"), m.get("page", "?"),
+            f"{m.get('combined_score', 0):.4f}",
+            f"{m.get('clip_score', 0):.4f}",
+            f"{ph.get('similarity', 0):.4f}",
+            m.get("verdict", "?"),
+        ])
+    print(md_table(headers, rows))
+
+    for i, m in enumerate(result.get("results", [])):
+        desc = m.get("description", {})
+        if not desc or "error" in desc:
+            continue
+        print(f"\n### Match #{i + 1} ({m.get('pdf', '?')} p{m.get('page', '?')}) — Description")
+        headers = ["Field", "Value"]
+        rows = [[label, desc.get(key, "")] for key, label in DESC_FIELDS if desc.get(key) is not None]
+        if rows:
+            print(md_table(headers, rows))
+    print()
+
+
 # ============================================================
 # Minimal output
 # ============================================================
@@ -356,22 +452,59 @@ def minimal_batch_result(result: dict):
             print(f"  [--] {name:20s} -> no match")
 
 
+def minimal_scan_result(result: dict):
+    ref = result.get("reference", {}).get("filename", "?")
+    timing = result.get("timing", {})
+    for i, m in enumerate(result.get("results", [])):
+        desc = m.get("description", {})
+        desc_short = desc.get("description", "") or ""
+        if len(desc_short) > 50:
+            desc_short = desc_short[:50] + "..."
+        tag = "*" if i == 0 else " "
+        print(f"{tag} {ref} -> {m.get('pdf', '?')} p{m.get('page', '?')} | {m.get('combined_score', 0):.4f} {m.get('verdict', '?'):14s} | {desc_short}")
+    total = timing.get("total_ms", "?")
+    print(f"  ({total}ms)")
+
+
 # ============================================================
 # Output dispatcher
 # ============================================================
 
 def output(result: dict, fmt: str, kind: str):
-    """Dispatch output based on format and result kind (match/extract/batch)."""
+    """Dispatch output based on format and result kind (match/extract/batch/scan/index/index_status)."""
     if fmt == "json":
         print(json.dumps(result, indent=2, ensure_ascii=False))
-    elif fmt == "csv":
-        {"match": csv_match_result, "extract": csv_extract_result, "batch": csv_batch_result}[kind](result)
-    elif fmt == "markdown":
-        {"match": md_match_result, "extract": md_extract_result, "batch": md_batch_result}[kind](result)
-    elif fmt == "minimal":
-        {"match": minimal_match_result, "extract": minimal_extract_result, "batch": minimal_batch_result}[kind](result)
+        return
+
+    csv_dispatch = {
+        "match": csv_match_result, "extract": csv_extract_result,
+        "batch": csv_batch_result, "scan": csv_scan_result,
+    }
+    md_dispatch = {
+        "match": md_match_result, "extract": md_extract_result,
+        "batch": md_batch_result, "scan": md_scan_result,
+    }
+    minimal_dispatch = {
+        "match": minimal_match_result, "extract": minimal_extract_result,
+        "batch": minimal_batch_result, "scan": minimal_scan_result,
+    }
+    pretty_dispatch = {
+        "match": pretty_match_result, "extract": pretty_extract_result,
+        "batch": pretty_batch_result, "scan": pretty_scan_result,
+        "index": pretty_index_result, "index_status": pretty_index_status,
+    }
+
+    if fmt == "csv" and kind in csv_dispatch:
+        csv_dispatch[kind](result)
+    elif fmt == "markdown" and kind in md_dispatch:
+        md_dispatch[kind](result)
+    elif fmt == "minimal" and kind in minimal_dispatch:
+        minimal_dispatch[kind](result)
+    elif kind in pretty_dispatch:
+        pretty_dispatch[kind](result)
     else:
-        {"match": pretty_match_result, "extract": pretty_extract_result, "batch": pretty_batch_result}[kind](result)
+        # Fallback to JSON for kinds without specific formatters
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 # ============================================================
@@ -393,6 +526,10 @@ def strip_b64(result: dict, kind: str):
         for entry in result.get("results", []):
             if entry.get("match"):
                 entry["match"].pop("zone_b64", None)
+    elif kind == "scan":
+        for m in result.get("results", []):
+            m.pop("zone_b64", None)
+            m.pop("thumbnail_b64", None)
 
 
 def cmd_health(fmt: str):
@@ -406,9 +543,12 @@ def cmd_health(fmt: str):
         vlm_s = data.get("vlm", "?")
         device = data.get("device", "?")
         vram = data.get("vram", {})
+        qdrant_s = data.get("qdrant", "?")
+        qdrant_v = data.get("qdrant_vectors", 0)
         print_header("HEALTH")
         print(f"  CLIP:   {clip_s}")
         print(f"  VLM:    {vlm_s}")
+        print(f"  Qdrant: {qdrant_s} ({qdrant_v} vectors)")
         print(f"  Device: {device}")
         if vram:
             print(f"  VRAM:   {vram.get('allocated_mb', 0):.0f} / {vram.get('total_mb', 0):.0f} MB")
@@ -458,7 +598,69 @@ def cmd_batch(pdf_path: str, img_paths: list[str], fmt: str):
     output(result, fmt, "batch")
 
 
+def cmd_index(pdf_paths: list[str], fmt: str):
+    files = []
+    handles = []
+    for p in pdf_paths:
+        fh = open(p, "rb")
+        handles.append(fh)
+        files.append(("pdfs", (os.path.basename(p), fh, "application/pdf")))
+
+    r = httpx.post(f"{API_URL}/index", files=files, timeout=TIMEOUT * 5)
+
+    for fh in handles:
+        fh.close()
+
+    r.raise_for_status()
+    result = r.json()
+    output(result, fmt, "index")
+
+
+def cmd_index_status(fmt: str):
+    r = httpx.get(f"{API_URL}/index/status", timeout=10.0)
+    r.raise_for_status()
+    result = r.json()
+    output(result, fmt, "index_status")
+
+
+def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10):
+    with open(img_path, "rb") as f_img:
+        files = {"image": (os.path.basename(img_path), f_img, "image/jpeg")}
+        data = {"top_k": str(top_k), "threshold": str(threshold)}
+        r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT * 3)
+    r.raise_for_status()
+    result = r.json()
+    strip_b64(result, "scan")
+    output(result, fmt, "scan")
+
+
+def cmd_index_remove(pdf_filename: str, fmt: str):
+    r = httpx.delete(f"{API_URL}/index/{pdf_filename}", timeout=10.0)
+    r.raise_for_status()
+    result = r.json()
+    if fmt == "json":
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"  Deleted: {result.get('deleted')}")
+        print(f"  Remaining vectors: {result.get('remaining_vectors')}")
+
+
+def cmd_index_clear(fmt: str):
+    r = httpx.delete(f"{API_URL}/index", timeout=10.0)
+    r.raise_for_status()
+    result = r.json()
+    if fmt == "json":
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"  Status: {result.get('status')}")
+        print(f"  Vectors: {result.get('total_vectors')}")
+
+
 def main():
+    global API_URL
+    api_override = get_option(sys.argv, "api", "")
+    if api_override:
+        API_URL = api_override.rstrip("/")
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     fmt = get_format(sys.argv)
 
@@ -485,6 +687,27 @@ def main():
             print("Usage: python test_clip.py batch <pdf> <img1> [img2] ... [--json|--csv|--markdown|--minimal]")
             sys.exit(1)
         cmd_batch(args[1], args[2:], fmt)
+    elif cmd == "index":
+        if len(args) < 2:
+            print("Usage: python test_clip.py index <pdf1> [pdf2] ... [--json|--csv|--markdown|--minimal]")
+            sys.exit(1)
+        cmd_index(args[1:], fmt)
+    elif cmd == "index-status":
+        cmd_index_status(fmt)
+    elif cmd == "scan":
+        if len(args) < 2:
+            print("Usage: python test_clip.py scan <image> [--json|--csv|--markdown|--minimal] [--threshold 0.70] [--top_k 10]")
+            sys.exit(1)
+        threshold = float(get_option(sys.argv, "threshold", "0.70"))
+        top_k = int(get_option(sys.argv, "top_k", "10"))
+        cmd_scan(args[1], fmt, threshold=threshold, top_k=top_k)
+    elif cmd == "index-remove":
+        if len(args) != 2:
+            print("Usage: python test_clip.py index-remove <pdf_filename>")
+            sys.exit(1)
+        cmd_index_remove(args[1], fmt)
+    elif cmd == "index-clear":
+        cmd_index_clear(fmt)
     else:
         print(f"Unknown command: {cmd}")
         print(__doc__)

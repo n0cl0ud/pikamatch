@@ -30,8 +30,11 @@ with st.sidebar:
         health = r.json()
         clip_status = health.get("clip", "unknown")
         vlm_status = health.get("vlm", "unknown")
+        qdrant_status = health.get("qdrant", "unknown")
+        qdrant_vectors = health.get("qdrant_vectors", 0)
         st.metric("CLIP", clip_status)
         st.metric("VLM (Qwen2.5-VL)", vlm_status)
+        st.metric("Qdrant", f"{qdrant_status} ({qdrant_vectors} vectors)")
         if health.get("vram"):
             vram = health["vram"]
             st.metric("VRAM", f"{vram.get('allocated_mb', '?')} / {vram.get('total_mb', '?')} MB")
@@ -115,7 +118,7 @@ def display_description(desc: dict):
 # Tab 1: Single Match
 # ============================================================
 
-tab1, tab2, tab3 = st.tabs(["🎯 JPG → PDF", "📦 Batch", "📄 Preview PDF"])
+tab1, tab2, tab3, tab4 = st.tabs(["🎯 JPG → PDF", "📦 Batch", "📄 Preview PDF", "🔎 Search Indexed PDFs"])
 
 with tab1:
     st.header("Single Match — JPG vs PDF")
@@ -291,3 +294,133 @@ with tab3:
 
                     st.markdown("**Description extraite:**")
                     display_description(ext.get("description", {}))
+
+
+# ============================================================
+# Tab 4: Search Indexed PDFs
+# ============================================================
+
+with tab4:
+    st.header("Search Indexed PDFs")
+
+    # --- Section 1: Index Management ---
+    st.subheader("📁 Index Management")
+
+    # Upload PDFs to index
+    pdfs_to_index = st.file_uploader(
+        "Upload PDFs to index", type=["pdf"],
+        accept_multiple_files=True, key="index_pdfs",
+    )
+
+    if pdfs_to_index:
+        if st.button("📥 Index these PDFs", key="btn_index", type="primary"):
+            with st.spinner(f"Indexing {len(pdfs_to_index)} PDF(s)..."):
+                files = []
+                for pdf in pdfs_to_index:
+                    files.append(("pdfs", (pdf.name, pdf.getvalue(), "application/pdf")))
+
+                try:
+                    r = httpx.post(f"{API_URL}/index", files=files, timeout=TIMEOUT * 5)
+                    r.raise_for_status()
+                    result = r.json()
+                except Exception as e:
+                    st.error(f"API error: {e}")
+                    st.stop()
+
+            st.success(f"Indexed! Total vectors: {result.get('total_vectors', '?')} ({result.get('timing_ms', '?')}ms)")
+            for item in result.get("indexed", []):
+                st.markdown(f"- **{item['pdf']}**: {item['images']} images")
+
+    # Show currently indexed PDFs
+    st.markdown("---")
+    st.markdown("**Currently indexed PDFs:**")
+    try:
+        r = httpx.get(f"{API_URL}/index/status", timeout=10.0)
+        r.raise_for_status()
+        status = r.json()
+
+        if status.get("total_vectors", 0) == 0:
+            st.info("No PDFs indexed yet. Upload PDFs above to get started.")
+        else:
+            st.metric("Total vectors", status.get("total_vectors", 0))
+
+            for item in status.get("pdfs", []):
+                col_name, col_count, col_del = st.columns([4, 1, 1])
+                col_name.write(item["pdf"])
+                col_count.write(f"{item['images']} imgs")
+                if col_del.button("🗑️", key=f"del_{item['pdf']}"):
+                    try:
+                        rd = httpx.delete(f"{API_URL}/index/{item['pdf']}", timeout=10.0)
+                        rd.raise_for_status()
+                        st.success(f"Deleted {item['pdf']}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Delete error: {e}")
+
+            if st.button("🗑️ Clear entire index", key="btn_clear_index"):
+                try:
+                    rd = httpx.delete(f"{API_URL}/index", timeout=10.0)
+                    rd.raise_for_status()
+                    st.success("Index cleared!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Clear error: {e}")
+
+    except Exception:
+        st.warning("Could not fetch index status.")
+
+    # --- Section 2: Search ---
+    st.divider()
+    st.subheader("🔍 Search")
+
+    scan_image = st.file_uploader(
+        "Upload image to search", type=["jpg", "jpeg", "png", "webp", "bmp"], key="scan_img",
+    )
+
+    col_scan_opts = st.columns(2)
+    scan_top_k = col_scan_opts[0].number_input("Top K results", min_value=1, max_value=50, value=10, key="scan_topk")
+    scan_threshold = col_scan_opts[1].number_input("Score threshold", min_value=0.0, max_value=1.0, value=0.70, step=0.05, key="scan_threshold")
+
+    if scan_image:
+        if st.button("🔍 Search", key="btn_scan", type="primary"):
+            with st.spinner("Searching indexed PDFs..."):
+                files = {"image": (scan_image.name, scan_image.getvalue(), scan_image.type or "image/jpeg")}
+                data = {"top_k": str(scan_top_k), "threshold": str(scan_threshold)}
+
+                try:
+                    r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT * 3)
+                    r.raise_for_status()
+                    result = r.json()
+                except Exception as e:
+                    st.error(f"API error: {e}")
+                    st.stop()
+
+            # Timing
+            timing = result.get("timing", {})
+            tc = st.columns(3)
+            tc[0].metric("Vector search", f"{timing.get('vector_search_ms', '?')} ms")
+            tc[1].metric("VLM extraction", f"{timing.get('vlm_extraction_ms', '?')} ms")
+            tc[2].metric("Total", f"{timing.get('total_ms', '?')} ms")
+
+            st.divider()
+
+            ref = result.get("reference", {})
+            st.markdown(f"**Référence:** {ref.get('filename')} ({ref.get('size')}) | **Matches:** {result.get('total_matches', 0)}")
+
+            results_list = result.get("results", [])
+            if not results_list:
+                st.warning("No matches found above threshold.")
+            else:
+                for i, m in enumerate(results_list):
+                    label = f"{'🏆 ' if i == 0 else ''}Match #{i+1} — {m.get('pdf', '?')} (page {m.get('page', '?')}) — Score: {m['combined_score']:.4f} ({m['verdict']})"
+                    with st.expander(label, expanded=(i == 0)):
+                        display_score(m)
+
+                        size_info = m.get("size_vs_ref", {})
+                        st.markdown(f"**PDF:** {m.get('pdf')} | **Page:** {m.get('page', '?')} | **Taille ref:** {size_info.get('ref')} → **PDF:** {size_info.get('pdf')} (scale: {size_info.get('scale_factor')})")
+
+                        st.markdown("**📋 Description extraite:**")
+                        display_description(m.get("description", {}))
+
+                        if m.get("zone_b64"):
+                            st.image(b64_to_image(m["zone_b64"]), caption=f"Zone PDF — {m.get('pdf')} page {m.get('page', '?')}")
