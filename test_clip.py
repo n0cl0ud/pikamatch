@@ -7,6 +7,7 @@ Usage:
     python test_clip.py extract catalogue.pdf [FORMAT]
     python test_clip.py batch catalogue.pdf img1.jpg img2.jpg [FORMAT]
     python test_clip.py index catalogue1.pdf catalogue2.pdf [FORMAT]
+    python test_clip.py index /path/to/pdf/folder [FORMAT]        (recursive)
     python test_clip.py index-status [FORMAT]
     python test_clip.py scan photo.jpg [FORMAT] [--threshold 0.70] [--top_k 10]
     python test_clip.py index-remove catalogue1.pdf
@@ -24,11 +25,12 @@ import csv
 import io
 import json
 import os
+import pathlib
 import sys
 
 import httpx
 
-API_URL = os.getenv("PIKAMATCH_API", "http://localhost:8002")
+API_URL = os.getenv("PIKAMATCH_API", "http://localhost:11434")
 TIMEOUT = 120.0
 
 DESC_FIELDS = [
@@ -598,7 +600,36 @@ def cmd_batch(pdf_path: str, img_paths: list[str], fmt: str):
     output(result, fmt, "batch")
 
 
+def resolve_pdf_paths(paths: list[str]) -> list[str]:
+    """Resolve paths: if a path is a directory, find all PDFs recursively."""
+    resolved = []
+    for p in paths:
+        path = pathlib.Path(p)
+        if path.is_dir():
+            found = sorted(path.rglob("*.pdf"))
+            resolved.extend(str(f) for f in found)
+            # Also match .PDF uppercase
+            found_upper = sorted(path.rglob("*.PDF"))
+            for f in found_upper:
+                if str(f) not in resolved:
+                    resolved.append(str(f))
+        elif path.is_file():
+            resolved.append(str(path))
+        else:
+            print(f"  Warning: '{p}' not found, skipping.")
+    return resolved
+
+
 def cmd_index(pdf_paths: list[str], fmt: str):
+    pdf_paths = resolve_pdf_paths(pdf_paths)
+    if not pdf_paths:
+        print("  No PDF files found.")
+        return
+    print(f"  Found {len(pdf_paths)} PDF(s) to index...")
+    for p in pdf_paths:
+        print(f"    - {p}")
+    print()
+
     files = []
     handles = []
     for p in pdf_paths:
