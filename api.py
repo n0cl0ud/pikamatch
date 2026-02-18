@@ -79,7 +79,7 @@ logger.info("CLIP model loaded.")
 
 # --- Qdrant setup ---
 os.makedirs(INDEXED_PDFS_DIR, exist_ok=True)
-qdrant = QdrantClient(url=QDRANT_URL, timeout=30.0)
+qdrant = QdrantClient(url=QDRANT_URL, timeout=300.0)
 try:
     qdrant.get_collection(QDRANT_COLLECTION)
     logger.info(f"Qdrant collection '{QDRANT_COLLECTION}' already exists.")
@@ -327,7 +327,7 @@ async def call_vlm(zone_img: Image.Image) -> dict:
         "max_tokens": 1024,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=None) as client:
         resp = await client.post(f"{VLM_URL}/v1/chat/completions", json=payload)
         resp.raise_for_status()
         data = resp.json()

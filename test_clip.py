@@ -27,11 +27,12 @@ import json
 import os
 import pathlib
 import sys
+import time
 
 import httpx
 
 API_URL = os.getenv("PIKAMATCH_API", "http://localhost:11434")
-TIMEOUT = 120.0
+TIMEOUT = None  # No timeout — PDFs can be large and VLM extraction takes time
 
 DESC_FIELDS = [
     ("description", "Description"),
@@ -573,7 +574,7 @@ def cmd_match(jpg_path: str, pdf_path: str, fmt: str):
 def cmd_extract(pdf_path: str, fmt: str):
     with open(pdf_path, "rb") as f_pdf:
         files = {"pdf": (os.path.basename(pdf_path), f_pdf, "application/pdf")}
-        r = httpx.post(f"{API_URL}/extract", files=files, timeout=TIMEOUT * 2)
+        r = httpx.post(f"{API_URL}/extract", files=files, timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     strip_b64(result, "extract")
@@ -589,7 +590,7 @@ def cmd_batch(pdf_path: str, img_paths: list[str], fmt: str):
             img_handles.append(fh)
             files.append(("images", (os.path.basename(p), fh, "image/jpeg")))
 
-        r = httpx.post(f"{API_URL}/match-batch", files=files, timeout=TIMEOUT * 3)
+        r = httpx.post(f"{API_URL}/match-batch", files=files, timeout=TIMEOUT)
 
         for fh in img_handles:
             fh.close()
@@ -620,31 +621,56 @@ def resolve_pdf_paths(paths: list[str]) -> list[str]:
     return resolved
 
 
-def cmd_index(pdf_paths: list[str], fmt: str):
+def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1):
     pdf_paths = resolve_pdf_paths(pdf_paths)
     if not pdf_paths:
         print("  No PDF files found.")
         return
-    print(f"  Found {len(pdf_paths)} PDF(s) to index...")
-    for p in pdf_paths:
-        print(f"    - {p}")
+    print(f"  Found {len(pdf_paths)} PDF(s) to index (batch size: {batch_size})")
     print()
 
-    files = []
-    handles = []
-    for p in pdf_paths:
-        fh = open(p, "rb")
-        handles.append(fh)
-        files.append(("pdfs", (os.path.basename(p), fh, "application/pdf")))
+    total_indexed = []
+    total_errors = []
+    t_start = time.time()
 
-    r = httpx.post(f"{API_URL}/index", files=files, timeout=TIMEOUT * 5)
+    for i in range(0, len(pdf_paths), batch_size):
+        batch = pdf_paths[i:i + batch_size]
+        batch_num = (i // batch_size) + 1
+        total_batches = (len(pdf_paths) + batch_size - 1) // batch_size
+        names = ", ".join(os.path.basename(p) for p in batch)
+        print(f"  [{batch_num}/{total_batches}] Indexing: {names}")
 
-    for fh in handles:
-        fh.close()
+        files = []
+        handles = []
+        for p in batch:
+            fh = open(p, "rb")
+            handles.append(fh)
+            files.append(("pdfs", (os.path.basename(p), fh, "application/pdf")))
 
-    r.raise_for_status()
-    result = r.json()
-    output(result, fmt, "index")
+        try:
+            r = httpx.post(f"{API_URL}/index", files=files, timeout=TIMEOUT)
+            r.raise_for_status()
+            result = r.json()
+            for item in result.get("indexed", []):
+                total_indexed.append(item)
+                print(f"    [OK] {item['pdf']} -> {item['images']} images ({result.get('timing_ms', '?')}ms)")
+        except Exception as e:
+            for p in batch:
+                name = os.path.basename(p)
+                total_errors.append(name)
+                print(f"    [FAIL] {name} -> {e}")
+        finally:
+            for fh in handles:
+                fh.close()
+
+    elapsed = round((time.time() - t_start) * 1000)
+    print()
+    print(f"  Done: {len(total_indexed)} PDF(s) indexed, {len(total_errors)} error(s), {elapsed}ms total")
+    if total_errors:
+        print(f"  Failed: {', '.join(total_errors)}")
+
+    if fmt == "json":
+        print(json.dumps({"indexed": total_indexed, "errors": total_errors, "timing_ms": elapsed}, indent=2))
 
 
 def cmd_index_status(fmt: str):
@@ -658,7 +684,7 @@ def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10):
     with open(img_path, "rb") as f_img:
         files = {"image": (os.path.basename(img_path), f_img, "image/jpeg")}
         data = {"top_k": str(top_k), "threshold": str(threshold)}
-        r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT * 3)
+        r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     strip_b64(result, "scan")
@@ -720,9 +746,10 @@ def main():
         cmd_batch(args[1], args[2:], fmt)
     elif cmd == "index":
         if len(args) < 2:
-            print("Usage: python test_clip.py index <pdf1> [pdf2] ... [--json|--csv|--markdown|--minimal]")
+            print("Usage: python test_clip.py index <pdf1|folder> [pdf2] ... [--batch-size N]")
             sys.exit(1)
-        cmd_index(args[1:], fmt)
+        batch_size = int(get_option(sys.argv, "batch-size", "1"))
+        cmd_index(args[1:], fmt, batch_size=batch_size)
     elif cmd == "index-status":
         cmd_index_status(fmt)
     elif cmd == "scan":
