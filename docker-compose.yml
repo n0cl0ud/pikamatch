@@ -6,6 +6,7 @@ services:
       - "8001:8000"
     environment:
       - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+      - LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/local/cuda/lib64
     volumes:
       - hf_cache:/root/.cache/huggingface
     command:
