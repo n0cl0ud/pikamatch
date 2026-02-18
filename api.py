@@ -755,14 +755,34 @@ async def extract(pdf: UploadFile = File(...)):
 # ============================================================
 
 @app.post("/index")
-async def index_pdfs(pdfs: list[UploadFile] = File(...)):
+async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(False)):
     """Index one or more PDFs into Qdrant for later searching."""
     t_start = time.time()
     indexed = []
+    skipped = []
 
     for pdf_file in pdfs:
         pdf_bytes = await pdf_file.read()
         pdf_filename = pdf_file.filename or "unknown.pdf"
+
+        # Check if already indexed — skip unless force
+        if not force:
+            try:
+                scroll_result = qdrant.scroll(
+                    collection_name=QDRANT_COLLECTION,
+                    scroll_filter=Filter(
+                        must=[FieldCondition(key="pdf_filename", match=MatchValue(value=pdf_filename))]
+                    ),
+                    limit=1,
+                    with_payload=False,
+                    with_vectors=False,
+                )
+                if len(scroll_result[0]) > 0:
+                    logger.info(f"Skipping '{pdf_filename}' — already indexed")
+                    skipped.append(pdf_filename)
+                    continue
+            except Exception:
+                pass
 
         # Save PDF to disk for later VLM rendering
         safe_name = pdf_filename.replace("/", "_").replace("\\", "_")
@@ -837,6 +857,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...)):
 
     return {
         "indexed": indexed,
+        "skipped": skipped,
         "total_vectors": total_vectors,
         "timing_ms": round((time.time() - t_start) * 1000),
     }

@@ -621,15 +621,16 @@ def resolve_pdf_paths(paths: list[str]) -> list[str]:
     return resolved
 
 
-def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1):
+def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool = False):
     pdf_paths = resolve_pdf_paths(pdf_paths)
     if not pdf_paths:
         print("  No PDF files found.")
         return
-    print(f"  Found {len(pdf_paths)} PDF(s) to index (batch size: {batch_size})")
+    print(f"  Found {len(pdf_paths)} PDF(s) to index (batch size: {batch_size}{', force' if force else ''})")
     print()
 
     total_indexed = []
+    total_skipped = []
     total_errors = []
     t_start = time.time()
 
@@ -642,18 +643,24 @@ def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1):
 
         files = []
         handles = []
+        data = {}
         for p in batch:
             fh = open(p, "rb")
             handles.append(fh)
             files.append(("pdfs", (os.path.basename(p), fh, "application/pdf")))
+        if force:
+            data["force"] = "true"
 
         try:
-            r = httpx.post(f"{API_URL}/index", files=files, timeout=TIMEOUT)
+            r = httpx.post(f"{API_URL}/index", files=files, data=data, timeout=TIMEOUT)
             r.raise_for_status()
             result = r.json()
             for item in result.get("indexed", []):
                 total_indexed.append(item)
                 print(f"    [OK] {item['pdf']} -> {item['images']} images ({result.get('timing_ms', '?')}ms)")
+            for name in result.get("skipped", []):
+                total_skipped.append(name)
+                print(f"    [SKIP] {name} (already indexed)")
         except Exception as e:
             for p in batch:
                 name = os.path.basename(p)
@@ -665,12 +672,12 @@ def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1):
 
     elapsed = round((time.time() - t_start) * 1000)
     print()
-    print(f"  Done: {len(total_indexed)} PDF(s) indexed, {len(total_errors)} error(s), {elapsed}ms total")
+    print(f"  Done: {len(total_indexed)} indexed, {len(total_skipped)} skipped, {len(total_errors)} error(s), {elapsed}ms total")
     if total_errors:
         print(f"  Failed: {', '.join(total_errors)}")
 
     if fmt == "json":
-        print(json.dumps({"indexed": total_indexed, "errors": total_errors, "timing_ms": elapsed}, indent=2))
+        print(json.dumps({"indexed": total_indexed, "skipped": total_skipped, "errors": total_errors, "timing_ms": elapsed}, indent=2))
 
 
 def cmd_index_status(fmt: str):
@@ -758,10 +765,11 @@ def main():
         cmd_batch(args[1], args[2:], fmt)
     elif cmd == "index":
         if len(args) < 2:
-            print("Usage: python test_clip.py index <pdf1|folder> [pdf2] ... [--batch-size N]")
+            print("Usage: python test_clip.py index <pdf1|folder> [pdf2] ... [--batch-size N] [--force]")
             sys.exit(1)
         batch_size = int(get_option(sys.argv, "batch-size", "1"))
-        cmd_index(args[1:], fmt, batch_size=batch_size)
+        force = "--force" in sys.argv
+        cmd_index(args[1:], fmt, batch_size=batch_size, force=force)
     elif cmd == "index-status":
         cmd_index_status(fmt)
     elif cmd == "scan":
