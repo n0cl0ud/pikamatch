@@ -718,7 +718,19 @@ def main():
     api_override = get_option(sys.argv, "api", "")
     if api_override:
         API_URL = api_override.rstrip("/")
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    # Strip --flag and their values from args
+    OPTS_WITH_VALUES = {"--api", "--batch-size", "--threshold", "--top_k"}
+    args = []
+    skip_next = False
+    for a in sys.argv[1:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if a.startswith("--"):
+            if a in OPTS_WITH_VALUES:
+                skip_next = True
+            continue
+        args.append(a)
     fmt = get_format(sys.argv)
 
     if not args:
