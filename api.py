@@ -17,6 +17,7 @@ from typing import Optional
 import uuid
 
 import clip
+import cv2
 import fitz  # PyMuPDF
 import httpx
 import imagehash
@@ -49,6 +50,12 @@ MIN_IMAGE_BYTES = 2048  # skip < 2KB (tracking pixels)
 MIN_IMAGE_DIM = 50  # skip < 50px
 RENDER_DPI = 200
 MAX_VLM_PX = 1200
+
+# --- Sub-image segmentation constants ---
+PAGE_COVERAGE_THRESHOLD = 0.60    # Image covering >60% of page triggers segmentation
+MIN_SUBIMAGE_AREA_RATIO = 0.02    # Sub-image must be >2% of page area
+MAX_SUBIMAGE_AREA_RATIO = 0.85    # Must be <85% (not the full page itself)
+MIN_SUBIMAGE_DIM = 80             # Min 80px dimension
 
 # --- VLM extraction prompt ---
 VLM_PROMPT = """Tu es un assistant spécialisé dans l'extraction de métadonnées d'images à partir de documents PDF.
@@ -191,6 +198,164 @@ def score_verdict(score: float) -> str:
     return "different"
 
 
+def is_full_page_image(bbox, page_rect) -> bool:
+    """Return True if bbox covers >60% of the page area (likely a full-page scan)."""
+    if bbox is None or page_rect is None:
+        return False
+    if not isinstance(bbox, fitz.Rect):
+        bbox = fitz.Rect(bbox)
+    if not isinstance(page_rect, fitz.Rect):
+        page_rect = fitz.Rect(page_rect)
+    page_area = page_rect.width * page_rect.height
+    if page_area <= 0:
+        return False
+    bbox_area = bbox.width * bbox.height
+    return (bbox_area / page_area) > PAGE_COVERAGE_THRESHOLD
+
+
+def segment_page_image(page_pil: Image.Image, page_rect, render_dpi: int = RENDER_DPI) -> list[dict]:
+    """
+    Use OpenCV contour detection to find individual artwork regions within a
+    full-page scan image. Returns a list of dicts with the same shape as
+    extract_pdf_images() entries: {image, bbox, width, height, page}.
+    The 'page' field must be filled in by the caller.
+    """
+    img_w, img_h = page_pil.size
+    total_area = img_w * img_h
+
+    # Convert PIL → OpenCV (BGR)
+    cv_img = cv2.cvtColor(np.array(page_pil), cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # Pass 1: Adaptive thresholding (handles varying backgrounds)
+    adaptive = cv2.adaptiveThreshold(
+        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, 10
+    )
+
+    # Pass 2: Canny edge detection (catches sharp borders)
+    canny = cv2.Canny(blurred, 30, 100)
+
+    # Combine both passes
+    combined = cv2.bitwise_or(adaptive, canny)
+
+    # Morphological closing to fill gaps
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+    closed = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel)
+
+    # Find external contours
+    contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Extract bounding rectangles and filter
+    raw_rects = []
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        area = w * h
+        area_ratio = area / total_area
+
+        # Filter by area ratio
+        if area_ratio < MIN_SUBIMAGE_AREA_RATIO or area_ratio > MAX_SUBIMAGE_AREA_RATIO:
+            continue
+        # Filter by minimum dimension
+        if w < MIN_SUBIMAGE_DIM or h < MIN_SUBIMAGE_DIM:
+            continue
+        # Filter extreme aspect ratios (>5:1)
+        aspect = max(w, h) / max(min(w, h), 1)
+        if aspect > 5.0:
+            continue
+        # Skip if it's basically the page border (within 5px of all edges)
+        if x <= 5 and y <= 5 and (x + w) >= (img_w - 5) and (y + h) >= (img_h - 5):
+            continue
+
+        raw_rects.append((x, y, w, h))
+
+    # Merge overlapping detections
+    merged = _merge_overlapping_rects(raw_rects)
+
+    # Convert pixel coords → PDF coords and crop sub-images
+    scale = 72.0 / render_dpi  # pixel coords → PDF points
+    if isinstance(page_rect, fitz.Rect):
+        pdf_x0, pdf_y0 = page_rect.x0, page_rect.y0
+    else:
+        pdf_x0, pdf_y0 = 0.0, 0.0
+
+    sub_images = []
+    for (x, y, w, h) in merged:
+        # Crop from original PIL image
+        crop = page_pil.crop((x, y, x + w, y + h))
+
+        # Convert pixel bbox to PDF coordinate bbox
+        pdf_bbox = fitz.Rect(
+            pdf_x0 + x * scale,
+            pdf_y0 + y * scale,
+            pdf_x0 + (x + w) * scale,
+            pdf_y0 + (y + h) * scale,
+        )
+
+        sub_images.append({
+            "image": crop,
+            "bbox": pdf_bbox,
+            "width": w,
+            "height": h,
+        })
+
+    logger.info(f"Segmentation: found {len(sub_images)} sub-images from {len(contours)} contours")
+    return sub_images
+
+
+def _merge_overlapping_rects(rects: list[tuple]) -> list[tuple]:
+    """Merge rectangles that overlap significantly (IoU >0.50 or containment >0.80)."""
+    if not rects:
+        return []
+
+    # Sort by area descending
+    rects = sorted(rects, key=lambda r: r[2] * r[3], reverse=True)
+    merged = []
+    used = [False] * len(rects)
+
+    for i in range(len(rects)):
+        if used[i]:
+            continue
+        x1, y1, w1, h1 = rects[i]
+        # Accumulate overlapping rects into this one
+        rx0, ry0, rx1, ry1 = x1, y1, x1 + w1, y1 + h1
+
+        for j in range(i + 1, len(rects)):
+            if used[j]:
+                continue
+            x2, y2, w2, h2 = rects[j]
+            bx0, by0, bx1, by1 = x2, y2, x2 + w2, y2 + h2
+
+            # Compute intersection
+            ix0 = max(rx0, bx0)
+            iy0 = max(ry0, by0)
+            ix1 = min(rx1, bx1)
+            iy1 = min(ry1, by1)
+
+            if ix0 >= ix1 or iy0 >= iy1:
+                continue  # no intersection
+
+            inter_area = (ix1 - ix0) * (iy1 - iy0)
+            area_a = (rx1 - rx0) * (ry1 - ry0)
+            area_b = (bx1 - bx0) * (by1 - by0)
+            union_area = area_a + area_b - inter_area
+
+            iou = inter_area / max(union_area, 1)
+            containment = inter_area / max(min(area_a, area_b), 1)
+
+            if iou > 0.50 or containment > 0.80:
+                # Merge: expand the bounding box
+                rx0 = min(rx0, bx0)
+                ry0 = min(ry0, by0)
+                rx1 = max(rx1, bx1)
+                ry1 = max(ry1, by1)
+                used[j] = True
+
+        merged.append((rx0, ry0, rx1 - rx0, ry1 - ry0))
+
+    return merged
+
+
 def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
     """Extract embedded images from a PDF with bounding boxes."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -228,15 +393,45 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
             rects = page.get_image_rects(xref)
             bbox = rects[0] if rects else None
 
-            results.append({
-                "page": page_idx,
-                "xref": xref,
-                "image": pil_img,
-                "image_bytes": img_bytes,
-                "bbox": bbox,
-                "width": pil_img.width,
-                "height": pil_img.height,
-            })
+            # Check if this image covers the full page (scanned catalog)
+            if is_full_page_image(bbox, page.rect):
+                logger.info(f"Page {page_idx}: full-page image detected ({pil_img.width}x{pil_img.height}), segmenting...")
+                sub_images = segment_page_image(pil_img, page.rect, RENDER_DPI)
+                if sub_images:
+                    for sub in sub_images:
+                        sub_bytes = io.BytesIO()
+                        sub["image"].save(sub_bytes, format="PNG")
+                        results.append({
+                            "page": page_idx,
+                            "xref": xref,
+                            "image": sub["image"],
+                            "image_bytes": sub_bytes.getvalue(),
+                            "bbox": sub["bbox"],
+                            "width": sub["width"],
+                            "height": sub["height"],
+                        })
+                else:
+                    # Segmentation found nothing — keep original full-page image
+                    logger.info(f"Page {page_idx}: segmentation found no sub-images, keeping full page")
+                    results.append({
+                        "page": page_idx,
+                        "xref": xref,
+                        "image": pil_img,
+                        "image_bytes": img_bytes,
+                        "bbox": bbox,
+                        "width": pil_img.width,
+                        "height": pil_img.height,
+                    })
+            else:
+                results.append({
+                    "page": page_idx,
+                    "xref": xref,
+                    "image": pil_img,
+                    "image_bytes": img_bytes,
+                    "bbox": bbox,
+                    "width": pil_img.width,
+                    "height": pil_img.height,
+                })
 
     # Fallback for scanned PDFs: render pages as images
     if not results:
@@ -246,15 +441,34 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
             pix = page.get_pixmap(dpi=RENDER_DPI)
             img_bytes = pix.tobytes("png")
             pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-            results.append({
-                "page": page_idx,
-                "xref": None,
-                "image": pil_img,
-                "image_bytes": img_bytes,
-                "bbox": page.rect,
-                "width": pil_img.width,
-                "height": pil_img.height,
-            })
+
+            # Try segmenting the rendered page
+            sub_images = segment_page_image(pil_img, page.rect, RENDER_DPI)
+            if sub_images:
+                logger.info(f"Page {page_idx}: segmented into {len(sub_images)} sub-images")
+                for sub in sub_images:
+                    sub_bytes = io.BytesIO()
+                    sub["image"].save(sub_bytes, format="PNG")
+                    results.append({
+                        "page": page_idx,
+                        "xref": None,
+                        "image": sub["image"],
+                        "image_bytes": sub_bytes.getvalue(),
+                        "bbox": sub["bbox"],
+                        "width": sub["width"],
+                        "height": sub["height"],
+                    })
+            else:
+                # No sub-images found — keep full page as before
+                results.append({
+                    "page": page_idx,
+                    "xref": None,
+                    "image": pil_img,
+                    "image_bytes": img_bytes,
+                    "bbox": page.rect,
+                    "width": pil_img.width,
+                    "height": pil_img.height,
+                })
 
     doc.close()
     return results
@@ -415,6 +629,7 @@ async def match(
     ref_img = Image.open(io.BytesIO(jpg_bytes)).convert("RGB")
     ref_embedding = embed_image(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
+    ref_grayscale = is_grayscale(ref_img)
     pdf_filename = pdf.filename or "unknown.pdf"
 
     # Check if this PDF is already indexed in Qdrant
@@ -453,7 +668,9 @@ async def match(
             clip_sim = result.score
             payload = result.payload
             phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
-            combo = combined_score(clip_sim, phash_result["similarity"])
+            pdf_grayscale = payload.get("is_grayscale", False)
+            color_mismatch = ref_grayscale != pdf_grayscale
+            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
 
             if combo >= threshold:
                 matches.append({
@@ -625,6 +842,7 @@ async def match_batch(
             ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
             ref_embedding = embed_image(ref_img)
             ref_phash_hex = compute_phash_hex(ref_img)
+            ref_grayscale = is_grayscale(ref_img)
 
             search_results = qdrant.query_points(
                 collection_name=QDRANT_COLLECTION,
@@ -642,7 +860,9 @@ async def match_batch(
                 clip_sim = result.score
                 payload = result.payload
                 phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
-                combo = combined_score(clip_sim, phash_result["similarity"])
+                pdf_grayscale = payload.get("is_grayscale", False)
+                color_mismatch = ref_grayscale != pdf_grayscale
+                combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
                 if combo > best_score:
                     best_score = combo
                     best_match = {
@@ -691,7 +911,8 @@ async def match_batch(
         for i, pdf_img_info in enumerate(pdf_images):
             clip_sim = cosine_similarity(ref_embedding, pdf_embeddings[i])
             phash_result = phash_similarity(ref_img, pdf_img_info["image"])
-            combo = combined_score(clip_sim, phash_result["similarity"])
+            color_mismatch = is_grayscale(ref_img) != is_grayscale(pdf_img_info["image"])
+            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
 
             if combo > best_score:
                 best_score = combo
