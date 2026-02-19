@@ -621,12 +621,13 @@ def resolve_pdf_paths(paths: list[str]) -> list[str]:
     return resolved
 
 
-def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool = False):
+def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool = False, tag: str = ""):
     pdf_paths = resolve_pdf_paths(pdf_paths)
     if not pdf_paths:
         print("  No PDF files found.")
         return
-    print(f"  Found {len(pdf_paths)} PDF(s) to index (batch size: {batch_size}{', force' if force else ''})")
+    tag_info = f", tag={tag}" if tag else ""
+    print(f"  Found {len(pdf_paths)} PDF(s) to index (batch size: {batch_size}{', force' if force else ''}{tag_info})")
     print()
 
     total_indexed = []
@@ -650,6 +651,8 @@ def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool =
             files.append(("pdfs", (os.path.basename(p), fh, "application/pdf")))
         if force:
             data["force"] = "true"
+        if tag:
+            data["tag"] = tag
 
         try:
             r = httpx.post(f"{API_URL}/index", files=files, data=data, timeout=TIMEOUT)
@@ -687,10 +690,12 @@ def cmd_index_status(fmt: str):
     output(result, fmt, "index_status")
 
 
-def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10):
+def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10, tag: str = ""):
     with open(img_path, "rb") as f_img:
         files = {"image": (os.path.basename(img_path), f_img, "image/jpeg")}
         data = {"top_k": str(top_k), "threshold": str(threshold)}
+        if tag:
+            data["tag"] = tag
         r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
@@ -726,7 +731,7 @@ def main():
     if api_override:
         API_URL = api_override.rstrip("/")
     # Strip --flag and their values from args
-    OPTS_WITH_VALUES = {"--api", "--batch-size", "--threshold", "--top_k"}
+    OPTS_WITH_VALUES = {"--api", "--batch-size", "--threshold", "--top_k", "--tag"}
     args = []
     skip_next = False
     for a in sys.argv[1:]:
@@ -769,7 +774,8 @@ def main():
             sys.exit(1)
         batch_size = int(get_option(sys.argv, "batch-size", "1"))
         force = "--force" in sys.argv
-        cmd_index(args[1:], fmt, batch_size=batch_size, force=force)
+        tag = get_option(sys.argv, "tag", "")
+        cmd_index(args[1:], fmt, batch_size=batch_size, force=force, tag=tag)
     elif cmd == "index-status":
         cmd_index_status(fmt)
     elif cmd == "scan":
@@ -778,7 +784,8 @@ def main():
             sys.exit(1)
         threshold = float(get_option(sys.argv, "threshold", "0.70"))
         top_k = int(get_option(sys.argv, "top_k", "10"))
-        cmd_scan(args[1], fmt, threshold=threshold, top_k=top_k)
+        tag = get_option(sys.argv, "tag", "")
+        cmd_scan(args[1], fmt, threshold=threshold, top_k=top_k, tag=tag)
     elif cmd == "index-remove":
         if len(args) != 2:
             print("Usage: python test_clip.py index-remove <pdf_filename>")

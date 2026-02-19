@@ -40,6 +40,9 @@ CLIP_DIM = 768  # CLIP ViT-L/14 embedding dimension
 INDEXED_PDFS_DIR = "/app/indexed_pdfs"
 CLIP_WEIGHT = 0.60
 PHASH_WEIGHT = 0.40
+# When color mismatch (one B&W, one color), trust CLIP more
+CLIP_WEIGHT_MISMATCH = 0.85
+PHASH_WEIGHT_MISMATCH = 0.15
 PHASH_HASH_SIZE = 16
 PHASH_MAX_BITS = PHASH_HASH_SIZE * PHASH_HASH_SIZE  # 256
 MIN_IMAGE_BYTES = 2048  # skip < 2KB (tracking pixels)
@@ -106,6 +109,23 @@ def embed_image(img: Image.Image) -> np.ndarray:
     return features.cpu().numpy().flatten()
 
 
+def is_grayscale(img: Image.Image) -> bool:
+    """Detect if an image is grayscale (B&W) by comparing RGB channels."""
+    if img.mode == "L":
+        return True
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    # Sample pixels — compare R, G, B channels
+    small = img.resize((50, 50), Image.LANCZOS)
+    arr = np.array(small, dtype=np.float32)
+    # If R ~= G ~= B for most pixels, it's grayscale
+    diff_rg = np.abs(arr[:, :, 0] - arr[:, :, 1]).mean()
+    diff_rb = np.abs(arr[:, :, 0] - arr[:, :, 2]).mean()
+    diff_gb = np.abs(arr[:, :, 1] - arr[:, :, 2]).mean()
+    avg_diff = (diff_rg + diff_rb + diff_gb) / 3.0
+    return bool(avg_diff < 10.0)  # threshold: less than 10 avg difference = grayscale
+
+
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b))
 
@@ -153,7 +173,9 @@ def phash_similarity_from_hex(hex_a: str, hex_b: str) -> dict:
     return {"similarity": round(similarity, 4), "distance": distance, "verdict": verdict}
 
 
-def combined_score(clip_score: float, phash_sim: float) -> float:
+def combined_score(clip_score: float, phash_sim: float, color_mismatch: bool = False) -> float:
+    if color_mismatch:
+        return round(CLIP_WEIGHT_MISMATCH * clip_score + PHASH_WEIGHT_MISMATCH * phash_sim, 4)
     return round(CLIP_WEIGHT * clip_score + PHASH_WEIGHT * phash_sim, 4)
 
 
@@ -488,7 +510,8 @@ async def match(
         pdf_embedding = embed_image(pdf_img)
         clip_sim = cosine_similarity(ref_embedding, pdf_embedding)
         phash_result = phash_similarity(ref_img, pdf_img)
-        combo = combined_score(clip_sim, phash_result["similarity"])
+        color_mismatch = is_grayscale(ref_img) != is_grayscale(pdf_img)
+        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
 
         if combo >= threshold:
             matches.append({
@@ -755,7 +778,7 @@ async def extract(pdf: UploadFile = File(...)):
 # ============================================================
 
 @app.post("/index")
-async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(False)):
+async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(False), tag: str = Form("")):
     """Index one or more PDFs into Qdrant for later searching."""
     t_start = time.time()
     indexed = []
@@ -810,6 +833,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
             pil_img = img_info["image"]
             embedding = embed_image(pil_img)
             phash_hex = compute_phash_hex(pil_img)
+            grayscale = is_grayscale(pil_img)
 
             # Create thumbnail (max 150px) as base64 for preview
             thumb = pil_img.copy()
@@ -852,6 +876,8 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
                     "thumbnail_b64": thumb_b64,
                     "description": description,
                     "zone_b64": zone_b64,
+                    "is_grayscale": grayscale,
+                    "tag": tag,
                 },
             ))
 
@@ -880,6 +906,7 @@ async def scan(
     image: UploadFile = File(...),
     top_k: int = Form(10),
     threshold: float = Form(0.70),
+    tag: str = Form(""),
 ):
     """Search indexed PDFs for matches to the uploaded image."""
     t_start = time.time()
@@ -889,12 +916,19 @@ async def scan(
     ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     ref_embedding = embed_image(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
+    ref_grayscale = is_grayscale(ref_img)
 
     # Vector search in Qdrant
     t_search_start = time.time()
+    query_filter = None
+    if tag:
+        query_filter = Filter(
+            must=[FieldCondition(key="tag", match=MatchValue(value=tag))]
+        )
     search_results = qdrant.query_points(
         collection_name=QDRANT_COLLECTION,
         query=ref_embedding.tolist(),
+        query_filter=query_filter,
         limit=top_k * 3,  # fetch extra to re-rank after pHash
         with_payload=True,
     ).points
@@ -906,7 +940,9 @@ async def scan(
         clip_sim = result.score
         payload = result.payload
         phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
-        combo = combined_score(clip_sim, phash_result["similarity"])
+        pdf_grayscale = payload.get("is_grayscale", False)
+        color_mismatch = ref_grayscale != pdf_grayscale
+        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
 
         if combo >= threshold:
             candidates.append({
