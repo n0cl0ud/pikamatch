@@ -536,7 +536,7 @@ def strip_b64(result: dict, kind: str):
 
 
 def cmd_health(fmt: str):
-    r = httpx.get(f"{API_URL}/health", timeout=10.0)
+    r = httpx.get(f"{API_URL}/health", timeout=TIMEOUT)
     r.raise_for_status()
     data = r.json()
     if fmt == "json":
@@ -681,7 +681,7 @@ def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool =
 
 
 def cmd_index_status(fmt: str):
-    r = httpx.get(f"{API_URL}/index/status", timeout=10.0)
+    r = httpx.get(f"{API_URL}/index/status", timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     output(result, fmt, "index_status")
@@ -699,7 +699,7 @@ def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10):
 
 
 def cmd_index_remove(pdf_filename: str, fmt: str):
-    r = httpx.delete(f"{API_URL}/index/{pdf_filename}", timeout=10.0)
+    r = httpx.delete(f"{API_URL}/index/{pdf_filename}", timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     if fmt == "json":
@@ -710,7 +710,7 @@ def cmd_index_remove(pdf_filename: str, fmt: str):
 
 
 def cmd_index_clear(fmt: str):
-    r = httpx.delete(f"{API_URL}/index", timeout=10.0)
+    r = httpx.delete(f"{API_URL}/index", timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     if fmt == "json":

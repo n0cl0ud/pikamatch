@@ -784,14 +784,26 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
             except Exception:
                 pass
 
-        # Save PDF to disk for later VLM rendering
-        safe_name = pdf_filename.replace("/", "_").replace("\\", "_")
-        pdf_path = os.path.join(INDEXED_PDFS_DIR, safe_name)
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
+        # Skip empty/corrupted PDFs
+        if not pdf_bytes or len(pdf_bytes) < 100:
+            logger.warning(f"Skipping '{pdf_filename}' — empty or too small ({len(pdf_bytes)} bytes)")
+            skipped.append(pdf_filename)
+            continue
 
-        # Extract images
-        pdf_images = extract_pdf_images(pdf_bytes)
+        try:
+            # Save PDF to disk for later VLM rendering
+            safe_name = pdf_filename.replace("/", "_").replace("\\", "_")
+            pdf_path = os.path.join(INDEXED_PDFS_DIR, safe_name)
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+
+            # Extract images
+            pdf_images = extract_pdf_images(pdf_bytes)
+        except Exception as e:
+            logger.error(f"Failed to process '{pdf_filename}': {e}")
+            skipped.append(pdf_filename)
+            continue
+
         points = []
 
         for img_idx, img_info in enumerate(pdf_images):
