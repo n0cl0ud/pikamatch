@@ -8,3 +8,5 @@ claude.md
 *.jpeg
 *.pdf
 *.png
+!docs/*.png
+!docs/*.svg

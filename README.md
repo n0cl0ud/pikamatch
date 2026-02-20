@@ -10,96 +10,31 @@ Built around [CLIP ViT-L/14](https://github.com/openai/CLIP) for visual matching
 
 PDFs are processed once: images are extracted (with OpenCV segmentation for full-page scans), embedded with CLIP, hashed with pHash, analyzed for grayscale, and their descriptions extracted by the VLM. Everything is stored in Qdrant for instant retrieval.
 
-```mermaid
-graph LR
-    PDF["PDF File"] --> EXTRACT["PyMuPDF<br/>Extract Images"]
-    EXTRACT --> CHECK{"Image covers<br/>>60% of page?"}
-
-    CHECK -->|"Yes"| OPENCV["OpenCV<br/>Segment Sub-images"]
-    CHECK -->|"No"| IMAGES["Individual Images"]
-    OPENCV --> IMAGES
-
-    EXTRACT -.->|"No images found"| RENDER["Render Page<br/>@ 200 DPI"]
-    RENDER --> OPENCV2["OpenCV<br/>Segment"]
-    OPENCV2 --> IMAGES
-
-    IMAGES --> CLIPEMB["CLIP ViT-L/14<br/>Embed (768-dim)"]
-    IMAGES --> PHASH["pHash<br/>16x16 = 256-bit"]
-    IMAGES --> GRAY["is_grayscale()<br/>B&W Detection"]
-    IMAGES --> VLM["Qwen2.5-VL<br/>Extract Description"]
-
-    CLIPEMB --> STORE["Qdrant<br/>Store Vector + Payload"]
-    PHASH --> STORE
-    GRAY --> STORE
-    VLM --> STORE
-
-    style PDF fill:#4a90d9,stroke:#2c5f9e,color:#fff
-    style OPENCV fill:#e74c3c,stroke:#c0392b,color:#fff
-    style OPENCV2 fill:#e74c3c,stroke:#c0392b,color:#fff
-    style CLIPEMB fill:#d94a7a,stroke:#9e2c55,color:#fff
-    style VLM fill:#4a90d9,stroke:#2c5f9e,color:#fff
-    style STORE fill:#50b87a,stroke:#2e7d4e,color:#fff
-```
+<p align="center">
+  <a href="docs/indexation-flow.mmd">
+    <img src="docs/indexation-flow.png" alt="Indexation Pipeline" width="800"/>
+  </a>
+</p>
 
 ### Search Pipeline
 
 Query images are embedded with CLIP and matched against Qdrant vectors via approximate nearest neighbor search. Results are re-ranked using a combined CLIP + pHash score with grayscale-aware weight adaptation. No VLM call needed — descriptions are pre-computed.
 
-```mermaid
-graph LR
-    IMG["Query Image<br/>(JPG/PNG)"] --> CLIPQ["CLIP ViT-L/14<br/>Embed"]
-    IMG --> PHASHQ["pHash<br/>Compute"]
-    IMG --> GRAYQ["is_grayscale()"]
-
-    CLIPQ --> SEARCH["Qdrant<br/>ANN Search<br/>+ tag filter"]
-    SEARCH --> RERANK["Re-rank<br/>CLIP + pHash"]
-
-    PHASHQ --> RERANK
-    GRAYQ --> SCORING{"Color<br/>Mismatch?"}
-    SCORING -->|"Same"| W1["60% CLIP<br/>40% pHash"]
-    SCORING -->|"Different"| W2["85% CLIP<br/>15% pHash"]
-    W1 --> RERANK
-    W2 --> RERANK
-
-    RERANK --> RESULTS["Results<br/>+ Pre-computed<br/>Descriptions"]
-
-    style IMG fill:#f5a623,stroke:#c17d12,color:#fff
-    style SEARCH fill:#50b87a,stroke:#2e7d4e,color:#fff
-    style CLIPQ fill:#d94a7a,stroke:#9e2c55,color:#fff
-    style RESULTS fill:#4a90d9,stroke:#2c5f9e,color:#fff
-```
+<p align="center">
+  <a href="docs/search-flow.mmd">
+    <img src="docs/search-flow.png" alt="Search Pipeline" width="800"/>
+  </a>
+</p>
 
 ### Sub-Image Segmentation
 
 When a PDF contains full-page scans (image covering >60% of page), OpenCV contour detection splits them into individual artworks. This dramatically improves CLIP scores (0.68 → 0.87+) by comparing cropped artworks instead of entire catalog pages.
 
-```mermaid
-graph TB
-    INPUT["Full-Page Scan<br/>(2931x3784 px)"] --> GRAY["Grayscale<br/>Conversion"]
-    GRAY --> BLUR["Gaussian Blur<br/>(5x5 kernel)"]
-
-    BLUR --> PASS1["Pass 1<br/>Adaptive Threshold<br/>(31, 10)"]
-    BLUR --> PASS2["Pass 2<br/>Canny Edge<br/>(30, 100)"]
-
-    PASS1 --> COMBINE["Bitwise OR"]
-    PASS2 --> COMBINE
-
-    COMBINE --> MORPH["Morphological Close<br/>(15x15 kernel)"]
-    MORPH --> CONTOURS["Find External<br/>Contours"]
-
-    CONTOURS --> FILTER["Filter<br/>2-85% area<br/>>80px dim<br/>aspect ratio < 5:1<br/>not border"]
-
-    FILTER --> MERGE["Merge Overlaps<br/>IoU >0.50<br/>Containment >0.80"]
-
-    MERGE --> CROP["Crop + Convert<br/>px → PDF coords<br/>(x × 72/dpi)"]
-
-    CROP --> OUTPUT["Sub-images<br/>(5-15 per page)"]
-
-    style INPUT fill:#4a90d9,stroke:#2c5f9e,color:#fff
-    style PASS1 fill:#e74c3c,stroke:#c0392b,color:#fff
-    style PASS2 fill:#e67e22,stroke:#d35400,color:#fff
-    style OUTPUT fill:#50b87a,stroke:#2e7d4e,color:#fff
-```
+<p align="center">
+  <a href="docs/segmentation-flow.mmd">
+    <img src="docs/segmentation-flow.png" alt="Segmentation Pipeline" width="400"/>
+  </a>
+</p>
 
 ## Quick Start
 
@@ -201,36 +136,11 @@ Grayscale detection happens automatically: at index time (stored per image in Qd
 
 ## Docker Compose Services
 
-```mermaid
-graph TB
-    subgraph "Host Machine"
-        USER["User / Client"]
-    end
-
-    subgraph "Docker Network (pikamatch)"
-        subgraph "GPU Services"
-            QWEN["qwen-vl<br/>vLLM + Qwen2.5-VL-7B-AWQ<br/>~5 GB VRAM<br/>:8000 → :8001"]
-            CLIP["clip-api<br/>CLIP + pHash + OpenCV<br/>~1.5 GB VRAM<br/>:8002 → :11434"]
-        end
-
-        subgraph "CPU Services"
-            QDRANT["qdrant<br/>Vector Database<br/>768-dim COSINE<br/>:6333 → :9000"]
-            UI["ui<br/>Streamlit<br/>:8501 → :1234"]
-        end
-    end
-
-    USER -->|":11434"| CLIP
-    USER -->|":1234"| UI
-    USER -->|":9000"| QDRANT
-    UI -->|"REST :8002"| CLIP
-    CLIP -->|"/v1/chat/completions"| QWEN
-    CLIP -->|"gRPC/REST :6333"| QDRANT
-
-    style QWEN fill:#4a90d9,stroke:#2c5f9e,color:#fff
-    style CLIP fill:#d94a7a,stroke:#9e2c55,color:#fff
-    style QDRANT fill:#50b87a,stroke:#2e7d4e,color:#fff
-    style UI fill:#f5a623,stroke:#c17d12,color:#fff
-```
+<p align="center">
+  <a href="docs/architecture.mmd">
+    <img src="docs/architecture.png" alt="Architecture" width="700"/>
+  </a>
+</p>
 
 | Service | Image | Internal | Host | GPU |
 |---------|-------|:--------:|:----:|:---:|
