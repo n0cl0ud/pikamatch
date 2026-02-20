@@ -1,1 +1,302 @@
-<svg id="my-svg" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 406.516px; background-color: transparent;" viewBox="0 0 406.515625 1494" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#my-svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#ccc;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#a44141;}#my-svg .error-text{fill:#ddd;stroke:#ddd;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:lightgrey;stroke:lightgrey;}#my-svg .marker.cross{stroke:lightgrey;}#my-svg svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#my-svg p{margin:0;}#my-svg .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#ccc;}#my-svg .cluster-label text{fill:#F9FFFE;}#my-svg .cluster-label span{color:#F9FFFE;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#ccc;color:#ccc;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#1f2020;stroke:#ccc;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:lightgrey!important;stroke-width:0;stroke:lightgrey;}#my-svg .arrowheadPath{fill:lightgrey;}#my-svg .edgePath .path{stroke:lightgrey;stroke-width:2.0px;}#my-svg .flowchart-link{stroke:lightgrey;fill:none;}#my-svg .edgeLabel{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#my-svg .edgeLabel p{background-color:hsl(0, 0%, 34.4117647059%);}#my-svg .edgeLabel rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#my-svg .labelBkg{background-color:rgba(87.75, 87.75, 87.75, 0.5);}#my-svg .cluster rect{fill:hsl(180, 1.5873015873%, 28.3529411765%);stroke:rgba(255, 255, 255, 0.25);stroke-width:1px;}#my-svg .cluster text{fill:#F9FFFE;}#my-svg .cluster span{color:#F9FFFE;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(20, 1.5873015873%, 12.3529411765%);border:1px solid rgba(255, 255, 255, 0.25);border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#ccc;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:hsl(0, 0%, 34.4117647059%);padding:2px;}#my-svg .icon-shape rect,#my-svg .image-shape rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#my-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="my-svg_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"/><g class="edgePaths"><path d="M217.176,86L217.176,90.167C217.176,94.333,217.176,102.667,217.176,110.333C217.176,118,217.176,125,217.176,128.5L217.176,132" id="L_INPUT_GRAY_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_INPUT_GRAY_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5Ijo4Nn0seyJ4IjoyMTcuMTc1NzgxMjUsInkiOjExMX0seyJ4IjoyMTcuMTc1NzgxMjUsInkiOjEzNn1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,214L217.176,218.167C217.176,222.333,217.176,230.667,217.176,238.333C217.176,246,217.176,253,217.176,256.5L217.176,260" id="L_GRAY_BLUR_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_GRAY_BLUR_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5IjoyMTR9LHsieCI6MjE3LjE3NTc4MTI1LCJ5IjoyMzl9LHsieCI6MjE3LjE3NTc4MTI1LCJ5IjoyNjR9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M150.066,342L142.896,346.167C135.726,350.333,121.387,358.667,114.217,366.333C107.047,374,107.047,381,107.047,384.5L107.047,388" id="L_BLUR_PASS1_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_BLUR_PASS1_0" data-points="W3sieCI6MTUwLjA2NTk3OTAwMzkwNjI1LCJ5IjozNDJ9LHsieCI6MTA3LjA0Njg3NSwieSI6MzY3fSx7IngiOjEwNy4wNDY4NzUsInkiOjM5Mn1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M284.286,342L291.455,346.167C298.625,350.333,312.965,358.667,320.135,366.333C327.305,374,327.305,381,327.305,384.5L327.305,388" id="L_BLUR_PASS2_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_BLUR_PASS2_0" data-points="W3sieCI6Mjg0LjI4NTU4MzQ5NjA5Mzc1LCJ5IjozNDJ9LHsieCI6MzI3LjMwNDY4NzUsInkiOjM2N30seyJ4IjozMjcuMzA0Njg3NSwieSI6MzkyfV0=" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M107.047,494L107.047,498.167C107.047,502.333,107.047,510.667,115.268,518.715C123.49,526.764,139.933,534.528,148.155,538.41L156.376,542.292" id="L_PASS1_COMBINE_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PASS1_COMBINE_0" data-points="W3sieCI6MTA3LjA0Njg3NSwieSI6NDk0fSx7IngiOjEwNy4wNDY4NzUsInkiOjUxOX0seyJ4IjoxNTkuOTkzNDY0NTQzMjY5MjMsInkiOjU0NH1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M327.305,494L327.305,498.167C327.305,502.333,327.305,510.667,319.083,518.715C310.862,526.764,294.418,534.528,286.197,538.41L277.975,542.292" id="L_PASS2_COMBINE_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PASS2_COMBINE_0" data-points="W3sieCI6MzI3LjMwNDY4NzUsInkiOjQ5NH0seyJ4IjozMjcuMzA0Njg3NSwieSI6NTE5fSx7IngiOjI3NC4zNTgwOTc5NTY3MzA4LCJ5Ijo1NDR9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,598L217.176,602.167C217.176,606.333,217.176,614.667,217.176,622.333C217.176,630,217.176,637,217.176,640.5L217.176,644" id="L_COMBINE_MORPH_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_COMBINE_MORPH_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5Ijo1OTh9LHsieCI6MjE3LjE3NTc4MTI1LCJ5Ijo2MjN9LHsieCI6MjE3LjE3NTc4MTI1LCJ5Ijo2NDh9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,726L217.176,730.167C217.176,734.333,217.176,742.667,217.176,750.333C217.176,758,217.176,765,217.176,768.5L217.176,772" id="L_MORPH_CONTOURS_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_MORPH_CONTOURS_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5Ijo3MjZ9LHsieCI6MjE3LjE3NTc4MTI1LCJ5Ijo3NTF9LHsieCI6MjE3LjE3NTc4MTI1LCJ5Ijo3NzZ9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,854L217.176,858.167C217.176,862.333,217.176,870.667,217.176,878.333C217.176,886,217.176,893,217.176,896.5L217.176,900" id="L_CONTOURS_FILTER_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CONTOURS_FILTER_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5Ijo4NTR9LHsieCI6MjE3LjE3NTc4MTI1LCJ5Ijo4Nzl9LHsieCI6MjE3LjE3NTc4MTI1LCJ5Ijo5MDR9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,1054L217.176,1058.167C217.176,1062.333,217.176,1070.667,217.176,1078.333C217.176,1086,217.176,1093,217.176,1096.5L217.176,1100" id="L_FILTER_MERGE_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_FILTER_MERGE_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5IjoxMDU0fSx7IngiOjIxNy4xNzU3ODEyNSwieSI6MTA3OX0seyJ4IjoyMTcuMTc1NzgxMjUsInkiOjExMDR9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,1206L217.176,1210.167C217.176,1214.333,217.176,1222.667,217.176,1230.333C217.176,1238,217.176,1245,217.176,1248.5L217.176,1252" id="L_MERGE_CROP_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_MERGE_CROP_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5IjoxMjA2fSx7IngiOjIxNy4xNzU3ODEyNSwieSI6MTIzMX0seyJ4IjoyMTcuMTc1NzgxMjUsInkiOjEyNTZ9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M217.176,1358L217.176,1362.167C217.176,1366.333,217.176,1374.667,217.176,1382.333C217.176,1390,217.176,1397,217.176,1400.5L217.176,1404" id="L_CROP_OUTPUT_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CROP_OUTPUT_0" data-points="W3sieCI6MjE3LjE3NTc4MTI1LCJ5IjoxMzU4fSx7IngiOjIxNy4xNzU3ODEyNSwieSI6MTM4M30seyJ4IjoyMTcuMTc1NzgxMjUsInkiOjE0MDh9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_INPUT_GRAY_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_GRAY_BLUR_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_BLUR_PASS1_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_BLUR_PASS2_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_PASS1_COMBINE_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_PASS2_COMBINE_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_COMBINE_MORPH_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_MORPH_CONTOURS_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CONTOURS_FILTER_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_FILTER_MERGE_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_MERGE_CROP_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CROP_OUTPUT_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="flowchart-INPUT-0" transform="translate(217.17578125, 47)"><rect class="basic label-container" style="fill:#4a90d9 !important;stroke:#2c5f9e !important" x="-84.3203125" y="-39" width="168.640625" height="78"/><g class="label" style="color:#fff !important" transform="translate(-54.3203125, -24)"><rect/><foreignObject width="108.640625" height="48"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Full-Page Scan<br />(2931x3784 px)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-GRAY-1" transform="translate(217.17578125, 175)"><rect class="basic label-container" style="" x="-69.0234375" y="-39" width="138.046875" height="78"/><g class="label" style="" transform="translate(-39.0234375, -24)"><rect/><foreignObject width="78.046875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Grayscale<br />Conversion</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-BLUR-3" transform="translate(217.17578125, 303)"><rect class="basic label-container" style="" x="-78.09375" y="-39" width="156.1875" height="78"/><g class="label" style="" transform="translate(-48.09375, -24)"><rect/><foreignObject width="96.1875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Gaussian Blur<br />(5x5 kernel)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-PASS1-5" transform="translate(107.046875, 443)"><rect class="basic label-container" style="fill:#e74c3c !important;stroke:#c0392b !important" x="-99.046875" y="-51" width="198.09375" height="102"/><g class="label" style="color:#fff !important" transform="translate(-69.046875, -36)"><rect/><foreignObject width="138.09375" height="72"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Pass 1<br />Adaptive Threshold<br />(31, 10)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-PASS2-7" transform="translate(327.3046875, 443)"><rect class="basic label-container" style="fill:#e67e22 !important;stroke:#d35400 !important" x="-71.2109375" y="-51" width="142.421875" height="102"/><g class="label" style="color:#fff !important" transform="translate(-41.2109375, -36)"><rect/><foreignObject width="82.421875" height="72"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Pass 2<br />Canny Edge<br />(30, 100)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-COMBINE-9" transform="translate(217.17578125, 571)"><rect class="basic label-container" style="" x="-68.2734375" y="-27" width="136.546875" height="54"/><g class="label" style="" transform="translate(-38.2734375, -12)"><rect/><foreignObject width="76.546875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Bitwise OR</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-MORPH-13" transform="translate(217.17578125, 687)"><rect class="basic label-container" style="" x="-101.125" y="-39" width="202.25" height="78"/><g class="label" style="" transform="translate(-71.125, -24)"><rect/><foreignObject width="142.25" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Morphological Close<br />(15x15 kernel)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-CONTOURS-15" transform="translate(217.17578125, 815)"><rect class="basic label-container" style="" x="-77.59375" y="-39" width="155.1875" height="78"/><g class="label" style="" transform="translate(-47.59375, -24)"><rect/><foreignObject width="95.1875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Find External<br />Contours</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-FILTER-17" transform="translate(217.17578125, 979)"><rect class="basic label-container" style="" x="-71.328125" y="-75" width="142.65625" height="150"/><g class="label" style="" transform="translate(-41.328125, -60)"><rect/><foreignObject width="82.65625" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Filter<br />2-85% area<br />&gt;80px dim<br />aspect &lt;5:1<br />not border</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-MERGE-19" transform="translate(217.17578125, 1155)"><rect class="basic label-container" style="" x="-98.15625" y="-51" width="196.3125" height="102"/><g class="label" style="" transform="translate(-68.15625, -36)"><rect/><foreignObject width="136.3125" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Merge Overlaps<br />IoU &gt;0.50<br />Containment &gt;0.80</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-CROP-21" transform="translate(217.17578125, 1307)"><rect class="basic label-container" style="" x="-90.6171875" y="-51" width="181.234375" height="102"/><g class="label" style="" transform="translate(-60.6171875, -36)"><rect/><foreignObject width="121.234375" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Crop + Convert<br />px → PDF coords<br />(x * 72/dpi)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-OUTPUT-23" transform="translate(217.17578125, 1447)"><rect class="basic label-container" style="fill:#50b87a !important;stroke:#2e7d4e !important" x="-85.1875" y="-39" width="170.375" height="78"/><g class="label" style="color:#fff !important" transform="translate(-55.1875, -24)"><rect/><foreignObject width="110.375" height="48"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Sub-images<br />(5-15 per page)</p></span></div></foreignObject></g></g></g></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 1300" width="700" height="1300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0e1a"/>
+      <stop offset="50%" stop-color="#0d1220"/>
+      <stop offset="100%" stop-color="#0a0f1e"/>
+    </linearGradient>
+    <linearGradient id="cardBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2744" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#141e35" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="gradGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d2a0"/><stop offset="100%" stop-color="#00b894"/>
+    </linearGradient>
+    <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="gradPurple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="gradOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="gradRed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb7185"/><stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+    <linearGradient id="gradCyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="gradGray" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#64748b"/><stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <filter id="glowGreen" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#00d2a0" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#4facfe" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowRed" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#fb7185" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowOrange" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#fbbf24" flood-opacity="0.35"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadowCard" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+    <filter id="shadowSmall" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#00d2a0"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#fb7185"/>
+    </marker>
+    <marker id="arrowDim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#334155"/>
+    </marker>
+    <pattern id="dots" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+      <circle cx="15" cy="15" r="0.7" fill="#1e293b" opacity="0.6"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="700" height="1300" fill="url(#bg)"/>
+  <rect width="700" height="1300" fill="url(#dots)"/>
+
+  <!-- ==================== TITLE ==================== -->
+  <text x="350" y="38" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="700" fill="#e2e8f0" letter-spacing="3">SEGMENTATION ALGORITHM</text>
+  <text x="350" y="58" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#64748b" letter-spacing="2">PIKAMATCH  &#x2022;  OPENCV CONTOUR DETECTION</text>
+  <!-- Title underline accent -->
+  <line x1="220" y1="66" x2="480" y2="66" stroke="url(#gradBlue)" stroke-width="1" opacity="0.4"/>
+
+  <!-- ==================== STEP 1: Full-Page Scan (Blue) ==================== -->
+  <g filter="url(#glowBlue)">
+    <rect x="225" y="85" width="250" height="52" rx="8" fill="url(#gradBlue)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="350" y="107" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="600" fill="#fff">Full-Page Scan</text>
+  <text x="350" y="125" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#bee3f8" opacity="0.85">2931 x 3784 px</text>
+
+  <!-- Arrow 1→2 -->
+  <line x1="350" y1="137" x2="350" y2="158" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ==================== STEP 2: Grayscale Conversion (Gray) ==================== -->
+  <rect x="225" y="162" width="250" height="42" rx="8" fill="url(#gradGray)" filter="url(#shadowSmall)"/>
+  <text x="350" y="188" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Grayscale Conversion</text>
+
+  <!-- Arrow 2→3 -->
+  <line x1="350" y1="204" x2="350" y2="225" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ==================== STEP 3: Gaussian Blur (Gray) ==================== -->
+  <rect x="225" y="229" width="250" height="52" rx="8" fill="url(#gradGray)" filter="url(#shadowSmall)"/>
+  <text x="350" y="251" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Gaussian Blur</text>
+  <text x="350" y="269" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#cbd5e1" opacity="0.85">5 x 5 kernel</text>
+
+  <!-- ==================== DUAL-PASS DETECTION CARD ==================== -->
+  <!-- Card container -->
+  <rect x="55" y="300" width="590" height="200" rx="12" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowCard)"/>
+  <!-- Card label -->
+  <text x="350" y="322" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#64748b" letter-spacing="2">DUAL-PASS DETECTION</text>
+  <!-- Dashed separator under label -->
+  <line x1="255" y1="330" x2="445" y2="330" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Split arrows from Blur to Pass 1 and Pass 2 -->
+  <path d="M 350 281 L 350 300 L 200 300 L 200 345" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 350 281 L 350 300 L 500 300 L 500 345" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- ==================== STEP 4a: Pass 1 - Adaptive Threshold (Red) ==================== -->
+  <g filter="url(#glowRed)">
+    <rect x="95" y="349" width="210" height="62" rx="8" fill="url(#gradRed)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="200" y="372" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="700" fill="#fff">PASS 1</text>
+  <text x="200" y="388" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#fff">Adaptive Threshold</text>
+  <text x="200" y="403" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#fecdd3" opacity="0.9">(31, 10)</text>
+
+  <!-- ==================== STEP 4b: Pass 2 - Canny Edge (Orange) ==================== -->
+  <g filter="url(#glowOrange)">
+    <rect x="395" y="349" width="210" height="62" rx="8" fill="url(#gradOrange)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="500" y="372" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="700" fill="#451a03">PASS 2</text>
+  <text x="500" y="388" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#451a03">Canny Edge</text>
+  <text x="500" y="403" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#78350f" opacity="0.9">(30, 100)</text>
+
+  <!-- VS divider between passes -->
+  <text x="350" y="385" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="700" fill="#475569">OR</text>
+
+  <!-- Converge arrows from Pass 1 and Pass 2 to Bitwise OR -->
+  <path d="M 200 411 L 200 470 L 350 470 L 350 510" stroke="#475569" stroke-width="1.5" fill="none"/>
+  <path d="M 500 411 L 500 470 L 350 470 L 350 510" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- ==================== STEP 5: Bitwise OR (Gray) ==================== -->
+  <rect x="225" y="514" width="250" height="52" rx="8" fill="url(#gradGray)" filter="url(#shadowSmall)"/>
+  <text x="350" y="536" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Bitwise OR</text>
+  <text x="350" y="554" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#cbd5e1" opacity="0.85">Combine both passes</text>
+
+  <!-- Arrow 5→6 -->
+  <line x1="350" y1="566" x2="350" y2="587" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ==================== STEP 6: Morphological Close (Gray) ==================== -->
+  <rect x="225" y="591" width="250" height="52" rx="8" fill="url(#gradGray)" filter="url(#shadowSmall)"/>
+  <text x="350" y="613" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Morphological Close</text>
+  <text x="350" y="631" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#cbd5e1" opacity="0.85">15 x 15 kernel</text>
+
+  <!-- Arrow 6→7 -->
+  <line x1="350" y1="643" x2="350" y2="664" stroke="#00d2a0" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <!-- ==================== STEP 7: Find External Contours (Green) ==================== -->
+  <g filter="url(#glowGreen)">
+    <rect x="205" y="668" width="290" height="42" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="350" y="694" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Find External Contours</text>
+
+  <!-- Arrow 7→8 -->
+  <line x1="350" y1="710" x2="350" y2="731" stroke="#00d2a0" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <!-- ==================== STEP 8: Filter (Green) ==================== -->
+  <g filter="url(#glowGreen)">
+    <rect x="185" y="735" width="330" height="64" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="350" y="757" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Filter</text>
+  <text x="350" y="773" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#d1fae5" opacity="0.9">2-85% area  &#x2022;  &gt;80px dim</text>
+  <text x="350" y="789" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#d1fae5" opacity="0.9">aspect &lt;5:1  &#x2022;  not border</text>
+
+  <!-- Arrow 8→9 -->
+  <line x1="350" y1="799" x2="350" y2="820" stroke="#00d2a0" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <!-- ==================== STEP 9: Merge Overlaps (Green) ==================== -->
+  <g filter="url(#glowGreen)">
+    <rect x="185" y="824" width="330" height="55" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="350" y="847" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Merge Overlaps</text>
+  <text x="350" y="867" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#d1fae5" opacity="0.9">IoU &gt;0.50  &#x2022;  Containment &gt;0.80</text>
+
+  <!-- Arrow 9→10 -->
+  <line x1="350" y1="879" x2="350" y2="900" stroke="#00d2a0" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <!-- ==================== STEP 10: Crop + Convert (Green) ==================== -->
+  <g filter="url(#glowGreen)">
+    <rect x="205" y="904" width="290" height="55" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="350" y="926" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Crop + Convert</text>
+  <text x="350" y="947" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#d1fae5" opacity="0.9">px &#x2192; PDF coords (x 72 / dpi)</text>
+
+  <!-- Arrow 10→11 -->
+  <line x1="350" y1="959" x2="350" y2="980" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ==================== STEP 11: Sub-images Output (Cyan) ==================== -->
+  <g filter="url(#glowBlue)">
+    <rect x="205" y="984" width="290" height="55" rx="8" fill="url(#gradCyan)" filter="url(#shadowSmall)"/>
+  </g>
+  <text x="350" y="1007" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="600" fill="#fff">Sub-images</text>
+  <text x="350" y="1027" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#cffafe" opacity="0.9">5-15 per page  &#x2022;  ~50-150ms</text>
+
+  <!-- ==================== STEP NUMBERS ==================== -->
+  <!-- Step number badges on the left side -->
+  <g>
+    <!-- Step 1 -->
+    <circle cx="212" cy="95" r="10" fill="#0f172a" stroke="#4facfe" stroke-width="1"/>
+    <text x="212" y="99" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#4facfe">1</text>
+    <!-- Step 2 -->
+    <circle cx="212" cy="173" r="10" fill="#0f172a" stroke="#64748b" stroke-width="1"/>
+    <text x="212" y="177" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#94a3b8">2</text>
+    <!-- Step 3 -->
+    <circle cx="212" cy="240" r="10" fill="#0f172a" stroke="#64748b" stroke-width="1"/>
+    <text x="212" y="244" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#94a3b8">3</text>
+    <!-- Step 4a -->
+    <circle cx="82" cy="359" r="10" fill="#0f172a" stroke="#fb7185" stroke-width="1"/>
+    <text x="82" y="363" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="8" font-weight="700" fill="#fb7185">4a</text>
+    <!-- Step 4b -->
+    <circle cx="618" cy="359" r="10" fill="#0f172a" stroke="#fbbf24" stroke-width="1"/>
+    <text x="618" y="363" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="8" font-weight="700" fill="#fbbf24">4b</text>
+    <!-- Step 5 -->
+    <circle cx="212" cy="524" r="10" fill="#0f172a" stroke="#64748b" stroke-width="1"/>
+    <text x="212" y="528" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#94a3b8">5</text>
+    <!-- Step 6 -->
+    <circle cx="212" cy="601" r="10" fill="#0f172a" stroke="#64748b" stroke-width="1"/>
+    <text x="212" y="605" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#94a3b8">6</text>
+    <!-- Step 7 -->
+    <circle cx="192" cy="678" r="10" fill="#0f172a" stroke="#00d2a0" stroke-width="1"/>
+    <text x="192" y="682" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#00d2a0">7</text>
+    <!-- Step 8 -->
+    <circle cx="172" cy="745" r="10" fill="#0f172a" stroke="#00d2a0" stroke-width="1"/>
+    <text x="172" y="749" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#00d2a0">8</text>
+    <!-- Step 9 -->
+    <circle cx="172" cy="834" r="10" fill="#0f172a" stroke="#00d2a0" stroke-width="1"/>
+    <text x="172" y="838" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" font-weight="700" fill="#00d2a0">9</text>
+    <!-- Step 10 -->
+    <circle cx="190" cy="914" r="11" fill="#0f172a" stroke="#00d2a0" stroke-width="1"/>
+    <text x="190" y="918" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="8" font-weight="700" fill="#00d2a0">10</text>
+    <!-- Step 11 -->
+    <circle cx="190" cy="994" r="11" fill="#0f172a" stroke="#22d3ee" stroke-width="1"/>
+    <text x="190" y="998" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="8" font-weight="700" fill="#22d3ee">11</text>
+  </g>
+
+  <!-- ==================== LEGEND ==================== -->
+  <g transform="translate(85, 1070)">
+    <!-- Legend background card -->
+    <rect x="0" y="0" width="530" height="120" rx="10" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowCard)"/>
+    <text x="265" y="24" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#64748b" letter-spacing="2">LEGEND</text>
+    <line x1="40" y1="33" x2="490" y2="33" stroke="#1e3a5f" stroke-width="1"/>
+
+    <!-- Row 1 -->
+    <!-- Input -->
+    <rect x="30" y="46" width="50" height="16" rx="4" fill="url(#gradBlue)"/>
+    <text x="90" y="58" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#94a3b8">Input</text>
+    <!-- Preprocessing -->
+    <rect x="155" y="46" width="50" height="16" rx="4" fill="url(#gradGray)"/>
+    <text x="215" y="58" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#94a3b8">Preprocessing</text>
+    <!-- Detection -->
+    <rect x="340" y="46" width="50" height="16" rx="4" fill="url(#gradRed)"/>
+    <text x="400" y="58" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#94a3b8">Detection</text>
+
+    <!-- Row 2 -->
+    <!-- Detection (Orange) -->
+    <rect x="30" y="76" width="50" height="16" rx="4" fill="url(#gradOrange)"/>
+    <text x="90" y="88" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#94a3b8">Detection</text>
+    <!-- Processing -->
+    <rect x="155" y="76" width="50" height="16" rx="4" fill="url(#gradGreen)"/>
+    <text x="215" y="88" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#94a3b8">Processing</text>
+    <!-- Output -->
+    <rect x="340" y="76" width="50" height="16" rx="4" fill="url(#gradCyan)"/>
+    <text x="400" y="88" font-family="'Segoe UI', system-ui, sans-serif" font-size="11" fill="#94a3b8">Output</text>
+  </g>
+
+  <!-- ==================== TIMING BADGE ==================== -->
+  <g transform="translate(260, 1210)">
+    <rect x="0" y="0" width="180" height="30" rx="15" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+    <text x="90" y="19" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#475569">~ 50-150 ms / page</text>
+  </g>
+
+  <!-- ==================== PHASE LABELS (right side) ==================== -->
+  <!-- Phase bracket: Input -->
+  <line x1="490" y1="90" x2="498" y2="90" stroke="#334155" stroke-width="1"/>
+  <line x1="498" y1="90" x2="498" y2="132" stroke="#334155" stroke-width="1"/>
+  <line x1="490" y1="132" x2="498" y2="132" stroke="#334155" stroke-width="1"/>
+  <text x="505" y="115" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#334155" font-style="italic">input</text>
+
+  <!-- Phase bracket: Preprocessing -->
+  <line x1="490" y1="167" x2="498" y2="167" stroke="#334155" stroke-width="1"/>
+  <line x1="498" y1="167" x2="498" y2="276" stroke="#334155" stroke-width="1"/>
+  <line x1="490" y1="276" x2="498" y2="276" stroke="#334155" stroke-width="1"/>
+  <text x="505" y="218" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#334155" font-style="italic">preprocess</text>
+
+  <!-- Phase bracket: Processing (green steps) -->
+  <line x1="530" y1="673" x2="538" y2="673" stroke="#334155" stroke-width="1"/>
+  <line x1="538" y1="673" x2="538" y2="954" stroke="#334155" stroke-width="1"/>
+  <line x1="530" y1="954" x2="538" y2="954" stroke="#334155" stroke-width="1"/>
+  <text x="545" y="818" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#334155" font-style="italic">process</text>
+
+  <!-- ==================== FOOTER ==================== -->
+  <text x="350" y="1270" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#1e293b">PIKAMATCH SEGMENTATION PIPELINE v1.0</text>
+
+  <!-- ==================== DECORATIVE CORNERS ==================== -->
+  <path d="M 10 10 L 10 35 M 10 10 L 35 10" stroke="#1e293b" stroke-width="1.5" fill="none"/>
+  <path d="M 690 10 L 690 35 M 690 10 L 665 10" stroke="#1e293b" stroke-width="1.5" fill="none"/>
+  <path d="M 10 1290 L 10 1265 M 10 1290 L 35 1290" stroke="#1e293b" stroke-width="1.5" fill="none"/>
+  <path d="M 690 1290 L 690 1265 M 690 1290 L 665 1290" stroke="#1e293b" stroke-width="1.5" fill="none"/>
+</svg>

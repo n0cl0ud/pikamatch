@@ -11,8 +11,8 @@ Built around [CLIP ViT-L/14](https://github.com/openai/CLIP) for visual matching
 PDFs are processed once: images are extracted (with OpenCV segmentation for full-page scans), embedded with CLIP, hashed with pHash, analyzed for grayscale, and their descriptions extracted by the VLM. Everything is stored in Qdrant for instant retrieval.
 
 <p align="center">
-  <a href="docs/indexation-flow.mmd">
-    <img src="docs/indexation-flow.png" alt="Indexation Pipeline" width="800"/>
+  <a href="docs/indexation-flow.svg">
+    <img src="docs/indexation-flow.svg" alt="Indexation Pipeline" width="800"/>
   </a>
 </p>
 
@@ -21,8 +21,8 @@ PDFs are processed once: images are extracted (with OpenCV segmentation for full
 Query images are embedded with CLIP and matched against Qdrant vectors via approximate nearest neighbor search. Results are re-ranked using a combined CLIP + pHash score with grayscale-aware weight adaptation. No VLM call needed — descriptions are pre-computed.
 
 <p align="center">
-  <a href="docs/search-flow.mmd">
-    <img src="docs/search-flow.png" alt="Search Pipeline" width="800"/>
+  <a href="docs/search-flow.svg">
+    <img src="docs/search-flow.svg" alt="Search Pipeline" width="800"/>
   </a>
 </p>
 
@@ -31,8 +31,8 @@ Query images are embedded with CLIP and matched against Qdrant vectors via appro
 When a PDF contains full-page scans (image covering >60% of page), OpenCV contour detection splits them into individual artworks. This dramatically improves CLIP scores (0.68 → 0.87+) by comparing cropped artworks instead of entire catalog pages.
 
 <p align="center">
-  <a href="docs/segmentation-flow.mmd">
-    <img src="docs/segmentation-flow.png" alt="Segmentation Pipeline" width="400"/>
+  <a href="docs/segmentation-flow.svg">
+    <img src="docs/segmentation-flow.svg" alt="Segmentation Pipeline" width="500"/>
   </a>
 </p>
 
@@ -137,8 +137,8 @@ Grayscale detection happens automatically: at index time (stored per image in Qd
 ## Docker Compose Services
 
 <p align="center">
-  <a href="docs/architecture.mmd">
-    <img src="docs/architecture.png" alt="Architecture" width="700"/>
+  <a href="docs/architecture.svg">
+    <img src="docs/architecture.svg" alt="Architecture" width="800"/>
   </a>
 </p>
 

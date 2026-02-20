@@ -1,1 +1,317 @@
-<svg id="my-svg" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 1263.03px; background-color: transparent;" viewBox="0 0 1263.03125 502" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#my-svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#ccc;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#a44141;}#my-svg .error-text{fill:#ddd;stroke:#ddd;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:lightgrey;stroke:lightgrey;}#my-svg .marker.cross{stroke:lightgrey;}#my-svg svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#my-svg p{margin:0;}#my-svg .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#ccc;}#my-svg .cluster-label text{fill:#F9FFFE;}#my-svg .cluster-label span{color:#F9FFFE;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#ccc;color:#ccc;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#1f2020;stroke:#ccc;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:lightgrey!important;stroke-width:0;stroke:lightgrey;}#my-svg .arrowheadPath{fill:lightgrey;}#my-svg .edgePath .path{stroke:lightgrey;stroke-width:2.0px;}#my-svg .flowchart-link{stroke:lightgrey;fill:none;}#my-svg .edgeLabel{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#my-svg .edgeLabel p{background-color:hsl(0, 0%, 34.4117647059%);}#my-svg .edgeLabel rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#my-svg .labelBkg{background-color:rgba(87.75, 87.75, 87.75, 0.5);}#my-svg .cluster rect{fill:hsl(180, 1.5873015873%, 28.3529411765%);stroke:rgba(255, 255, 255, 0.25);stroke-width:1px;}#my-svg .cluster text{fill:#F9FFFE;}#my-svg .cluster span{color:#F9FFFE;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(20, 1.5873015873%, 12.3529411765%);border:1px solid rgba(255, 255, 255, 0.25);border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#ccc;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:hsl(0, 0%, 34.4117647059%);padding:2px;}#my-svg .icon-shape rect,#my-svg .image-shape rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#my-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="my-svg_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"/><g class="edgePaths"><path d="M110.927,160L122.957,143.167C134.988,126.333,159.049,92.667,188.411,75.833C217.773,59,252.438,59,287.102,59C321.766,59,356.43,59,377.262,59C398.094,59,405.094,59,408.594,59L412.094,59" id="L_IMG_CLIPQ_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IMG_CLIPQ_0" data-points="W3sieCI6MTEwLjkyNzA2NDczMjE0Mjg1LCJ5IjoxNjB9LHsieCI6MTgzLjEwOTM3NSwieSI6NTl9LHsieCI6Mjg3LjEwMTU2MjUsInkiOjU5fSx7IngiOjM5MS4wOTM3NSwieSI6NTl9LHsieCI6NDE2LjA5Mzc1LCJ5Ijo1OX1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M158.109,199L162.276,199C166.443,199,174.776,199,196.275,199C217.773,199,252.438,199,287.102,199C321.766,199,356.43,199,390.94,199C425.451,199,459.807,199,499.578,199C539.349,199,584.534,199,617.559,199C650.583,199,671.448,199,681.88,199L692.313,199" id="L_IMG_PHASHQ_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IMG_PHASHQ_0" data-points="W3sieCI6MTU4LjEwOTM3NSwieSI6MTk5fSx7IngiOjE4My4xMDkzNzUsInkiOjE5OX0seyJ4IjoyODcuMTAxNTYyNSwieSI6MTk5fSx7IngiOjM5MS4wOTM3NSwieSI6MTk5fSx7IngiOjQ5NC4xNjQwNjI1LCJ5IjoxOTl9LHsieCI6NjI5LjcxODc1LCJ5IjoxOTl9LHsieCI6Njk2LjMxMjUsInkiOjE5OX1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M103.378,238L116.667,263.5C129.955,289,156.532,340,173.321,365.5C190.109,391,197.109,391,200.609,391L204.109,391" id="L_IMG_GRAYQ_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IMG_GRAYQ_0" data-points="W3sieCI6MTAzLjM3ODI5NTg5ODQzNzUsInkiOjIzOH0seyJ4IjoxODMuMTA5Mzc1LCJ5IjozOTF9LHsieCI6MjA4LjEwOTM3NSwieSI6MzkxfV0=" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M572.234,59L581.815,59C591.396,59,610.557,59,629.052,59C647.547,59,665.375,59,674.289,59L683.203,59" id="L_CLIPQ_SEARCH_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CLIPQ_SEARCH_0" data-points="W3sieCI6NTcyLjIzNDM3NSwieSI6NTl9LHsieCI6NjI5LjcxODc1LCJ5Ijo1OX0seyJ4Ijo2ODcuMjAzMTI1LCJ5Ijo1OX1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M829.594,59L833.76,59C837.927,59,846.26,59,863.733,85.902C881.206,112.805,907.818,166.61,921.123,193.512L934.429,220.415" id="L_SEARCH_RERANK_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SEARCH_RERANK_0" data-points="W3sieCI6ODI5LjU5Mzc1LCJ5Ijo1OX0seyJ4Ijo4NTQuNTkzNzUsInkiOjU5fSx7IngiOjkzNi4yMDI3ODAzMzA4ODIzLCJ5IjoyMjR9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M820.484,199L826.169,199C831.854,199,843.224,199,854.915,202.81C866.606,206.619,878.618,214.238,884.623,218.048L890.629,221.857" id="L_PHASHQ_RERANK_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PHASHQ_RERANK_0" data-points="W3sieCI6ODIwLjQ4NDM3NSwieSI6MTk5fSx7IngiOjg1NC41OTM3NSwieSI6MTk5fSx7IngiOjg5NC4wMDcyMDIxNDg0Mzc1LCJ5IjoyMjR9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M366.094,391L370.26,391C374.427,391,382.76,391,390.858,391C398.956,391,406.818,391,410.749,391L414.68,391" id="L_GRAYQ_SCORING_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_GRAYQ_SCORING_0" data-points="W3sieCI6MzY2LjA5Mzc1LCJ5IjozOTF9LHsieCI6MzkxLjA5Mzc1LCJ5IjozOTF9LHsieCI6NDE4LjY3OTY4NzUsInkiOjM5MX1d" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M545.44,366.791L559.486,360.159C573.533,353.527,601.626,340.264,625.267,333.632C648.909,327,668.099,327,677.694,327L687.289,327" id="L_SCORING_W1_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SCORING_W1_0" data-points="W3sieCI6NTQ1LjQzOTUzNDg2NTIyNzMsInkiOjM2Ni43OTEwOTczNjUyMjcyNH0seyJ4Ijo2MjkuNzE4NzUsInkiOjMyN30seyJ4Ijo2OTEuMjg5MDYyNSwieSI6MzI3fV0=" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M545.44,415.209L559.486,421.841C573.533,428.473,601.626,441.736,625.267,448.368C648.909,455,668.099,455,677.694,455L687.289,455" id="L_SCORING_W2_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SCORING_W2_0" data-points="W3sieCI6NTQ1LjQzOTUzNDg2NTIyNzMsInkiOjQxNS4yMDg5MDI2MzQ3NzI3Nn0seyJ4Ijo2MjkuNzE4NzUsInkiOjQ1NX0seyJ4Ijo2OTEuMjg5MDYyNSwieSI6NDU1fV0=" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M825.508,327L830.355,327C835.203,327,844.898,327,855.752,323.19C866.606,319.381,878.618,311.762,884.623,307.952L890.629,304.143" id="L_W1_RERANK_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_W1_RERANK_0" data-points="W3sieCI6ODI1LjUwNzgxMjUsInkiOjMyN30seyJ4Ijo4NTQuNTkzNzUsInkiOjMyN30seyJ4Ijo4OTQuMDA3MjAyMTQ4NDM3NSwieSI6MzAyfV0=" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M825.508,455L830.355,455C835.203,455,844.898,455,862.837,430.09C880.775,405.18,906.956,355.361,920.046,330.451L933.136,305.541" id="L_W2_RERANK_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_W2_RERANK_0" data-points="W3sieCI6ODI1LjUwNzgxMjUsInkiOjQ1NX0seyJ4Ijo4NTQuNTkzNzUsInkiOjQ1NX0seyJ4Ijo5MzQuOTk3MTkyMzgyODEyNSwieSI6MzAyfV0=" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M1031.391,263L1035.557,263C1039.724,263,1048.057,263,1055.724,263C1063.391,263,1070.391,263,1073.891,263L1077.391,263" id="L_RERANK_RESULTS_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_RERANK_RESULTS_0" data-points="W3sieCI6MTAzMS4zOTA2MjUsInkiOjI2M30seyJ4IjoxMDU2LjM5MDYyNSwieSI6MjYzfSx7IngiOjEwODEuMzkwNjI1LCJ5IjoyNjN9XQ==" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_IMG_CLIPQ_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_IMG_PHASHQ_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_IMG_GRAYQ_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CLIPQ_SEARCH_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_SEARCH_RERANK_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_PHASHQ_RERANK_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_GRAYQ_SCORING_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(629.71875, 327)"><g class="label" data-id="L_SCORING_W1_0" transform="translate(-19.0546875, -12)"><foreignObject width="38.109375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>Same</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(629.71875, 455)"><g class="label" data-id="L_SCORING_W2_0" transform="translate(-32.484375, -12)"><foreignObject width="64.96875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>Different</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_W1_RERANK_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_W2_RERANK_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_RERANK_RESULTS_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="flowchart-IMG-0" transform="translate(83.0546875, 199)"><rect class="basic label-container" style="fill:#f5a623 !important;stroke:#c17d12 !important" x="-75.0546875" y="-39" width="150.109375" height="78"/><g class="label" style="color:#fff !important" transform="translate(-45.0546875, -24)"><rect/><foreignObject width="90.109375" height="48"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Query Image<br />(JPG/PNG)</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-CLIPQ-1" transform="translate(494.1640625, 59)"><rect class="basic label-container" style="fill:#d94a7a !important;stroke:#9e2c55 !important" x="-78.0703125" y="-39" width="156.140625" height="78"/><g class="label" style="color:#fff !important" transform="translate(-48.0703125, -24)"><rect/><foreignObject width="96.140625" height="48"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>CLIP ViT-L/14<br />Embed</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-PHASHQ-3" transform="translate(758.3984375, 199)"><rect class="basic label-container" style="" x="-62.0859375" y="-39" width="124.171875" height="78"/><g class="label" style="" transform="translate(-32.0859375, -24)"><rect/><foreignObject width="64.171875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>pHash<br />Compute</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-GRAYQ-5" transform="translate(287.1015625, 391)"><rect class="basic label-container" style="" x="-78.9921875" y="-27" width="157.984375" height="54"/><g class="label" style="" transform="translate(-48.9921875, -12)"><rect/><foreignObject width="97.984375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>is_grayscale()</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-SEARCH-7" transform="translate(758.3984375, 59)"><rect class="basic label-container" style="fill:#50b87a !important;stroke:#2e7d4e !important" x="-71.1953125" y="-51" width="142.390625" height="102"/><g class="label" style="color:#fff !important" transform="translate(-41.1953125, -36)"><rect/><foreignObject width="82.390625" height="72"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Qdrant<br />ANN Search<br />+ tag filter</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-RERANK-9" transform="translate(955.4921875, 263)"><rect class="basic label-container" style="" x="-75.8984375" y="-39" width="151.796875" height="78"/><g class="label" style="" transform="translate(-45.8984375, -24)"><rect/><foreignObject width="91.796875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Re-rank<br />CLIP + pHash</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-SCORING-13" transform="translate(494.1640625, 391)"><polygon points="75.484375,0 150.96875,-75.484375 75.484375,-150.96875 0,-75.484375" class="label-container" transform="translate(-74.984375, 75.484375)"/><g class="label" style="" transform="translate(-36.484375, -24)"><rect/><foreignObject width="72.96875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Color<br />Mismatch?</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-W1-15" transform="translate(758.3984375, 327)"><rect class="basic label-container" style="" x="-67.109375" y="-39" width="134.21875" height="78"/><g class="label" style="" transform="translate(-37.109375, -24)"><rect/><foreignObject width="74.21875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>60% CLIP<br />40% pHash</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-W2-17" transform="translate(758.3984375, 455)"><rect class="basic label-container" style="" x="-67.109375" y="-39" width="134.21875" height="78"/><g class="label" style="" transform="translate(-37.109375, -24)"><rect/><foreignObject width="74.21875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>85% CLIP<br />15% pHash</p></span></div></foreignObject></g></g><g class="node default" id="flowchart-RESULTS-23" transform="translate(1168.2109375, 263)"><rect class="basic label-container" style="fill:#4a90d9 !important;stroke:#2c5f9e !important" x="-86.8203125" y="-51" width="173.640625" height="102"/><g class="label" style="color:#fff !important" transform="translate(-56.8203125, -36)"><rect/><foreignObject width="113.640625" height="72"><div style="color: rgb(255, 255, 255) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#fff !important" class="nodeLabel"><p>Results<br />+ Pre-computed<br />Descriptions</p></span></div></foreignObject></g></g></g></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 700" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+<defs>
+  <!-- Background gradient -->
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#0a0e1a"/>
+    <stop offset="50%" stop-color="#0d1220"/>
+    <stop offset="100%" stop-color="#0a0f1e"/>
+  </linearGradient>
+  <!-- Card gradient -->
+  <linearGradient id="cardBlue" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#1a2744" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#141e35" stop-opacity="0.95"/>
+  </linearGradient>
+  <!-- Node gradients -->
+  <linearGradient id="gradGreen" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#00d2a0"/><stop offset="100%" stop-color="#00b894"/>
+  </linearGradient>
+  <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#3b82f6"/>
+  </linearGradient>
+  <linearGradient id="gradPurple" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/>
+  </linearGradient>
+  <linearGradient id="gradOrange" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
+  </linearGradient>
+  <linearGradient id="gradRed" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#fb7185"/><stop offset="100%" stop-color="#e11d48"/>
+  </linearGradient>
+  <linearGradient id="gradCyan" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#06b6d4"/>
+  </linearGradient>
+  <linearGradient id="gradGray" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#64748b"/><stop offset="100%" stop-color="#475569"/>
+  </linearGradient>
+  <!-- Glow filters -->
+  <filter id="glowGreen" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#00d2a0" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#4facfe" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="glowPurple" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#a78bfa" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="glowOrange" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#fbbf24" flood-opacity="0.35"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="glowRed" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#fb7185" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="glowCyan" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="6" result="blur"/><feFlood flood-color="#22d3ee" flood-opacity="0.3"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <!-- Shadow filters -->
+  <filter id="shadowCard" x="-10%" y="-10%" width="125%" height="125%">
+    <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000" flood-opacity="0.4"/>
+  </filter>
+  <filter id="shadowSmall" x="-10%" y="-10%" width="120%" height="120%">
+    <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.3"/>
+  </filter>
+  <!-- Arrow markers -->
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569"/>
+  </marker>
+  <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#00d2a0"/>
+  </marker>
+  <marker id="arrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#a78bfa"/>
+  </marker>
+  <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#fbbf24"/>
+  </marker>
+  <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#fb7185"/>
+  </marker>
+  <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#4facfe"/>
+  </marker>
+  <marker id="arrowCyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#22d3ee"/>
+  </marker>
+  <marker id="arrowDim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 1 L 10 5 L 0 9 z" fill="#334155"/>
+  </marker>
+  <!-- Dot pattern -->
+  <pattern id="dots" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+    <circle cx="15" cy="15" r="0.7" fill="#1e293b" opacity="0.6"/>
+  </pattern>
+</defs>
+
+<!-- ============================================================ -->
+<!-- BACKGROUND                                                    -->
+<!-- ============================================================ -->
+<rect width="1400" height="700" fill="url(#bg)"/>
+<rect width="1400" height="700" fill="url(#dots)"/>
+
+<!-- ============================================================ -->
+<!-- TITLE                                                         -->
+<!-- ============================================================ -->
+<text x="700" y="38" text-anchor="middle" fill="#e2e8f0" font-size="20" font-weight="700" letter-spacing="4">SEARCH PIPELINE</text>
+<text x="700" y="58" text-anchor="middle" fill="#64748b" font-size="11" font-weight="500" letter-spacing="3">PIKAMATCH  &#x2022;  INSTANT QUERY FLOW</text>
+
+<!-- Decorative line under title -->
+<line x1="560" y1="68" x2="840" y2="68" stroke="#1e3a5f" stroke-width="1" opacity="0.5"/>
+
+<!-- ============================================================ -->
+<!-- CARD CONTAINER — Phase 1: Embedding                          -->
+<!-- ============================================================ -->
+<rect x="200" y="85" width="370" height="200" rx="12" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowCard)"/>
+<text x="385" y="108" text-anchor="middle" fill="#64748b" font-size="10" font-weight="600" letter-spacing="2">PHASE 1 — EMBEDDING</text>
+
+<!-- ============================================================ -->
+<!-- CARD CONTAINER — Phase 2: Decision + Weighting               -->
+<!-- ============================================================ -->
+<rect x="620" y="85" width="340" height="530" rx="12" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowCard)"/>
+<text x="790" y="108" text-anchor="middle" fill="#64748b" font-size="10" font-weight="600" letter-spacing="2">PHASE 2 — SCORING</text>
+
+<!-- ============================================================ -->
+<!-- CARD CONTAINER — Phase 3: Results                            -->
+<!-- ============================================================ -->
+<rect x="1010" y="85" width="360" height="340" rx="12" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowCard)"/>
+<text x="1190" y="108" text-anchor="middle" fill="#64748b" font-size="10" font-weight="600" letter-spacing="2">PHASE 3 — RESULTS</text>
+
+<!-- ============================================================ -->
+<!-- NODE: Query Image (Orange)                                    -->
+<!-- ============================================================ -->
+<g filter="url(#glowOrange)">
+  <rect x="30" y="260" width="150" height="80" rx="10" fill="url(#gradOrange)" filter="url(#shadowSmall)"/>
+  <text x="105" y="293" text-anchor="middle" fill="#1a1a2e" font-size="14" font-weight="700">Query Image</text>
+  <text x="105" y="312" text-anchor="middle" fill="#1a1a2e" font-size="11" font-weight="500" opacity="0.8">JPG / PNG</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: CLIP ViT-L/14 Embed (Red/Pink)                          -->
+<!-- ============================================================ -->
+<g filter="url(#glowRed)">
+  <rect x="228" y="125" width="165" height="65" rx="8" fill="url(#gradRed)" filter="url(#shadowSmall)"/>
+  <text x="310" y="153" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">CLIP ViT-L/14</text>
+  <text x="310" y="172" text-anchor="middle" fill="#fff" font-size="10" font-weight="500" opacity="0.85">Embed (768-dim)</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: pHash Compute (Green)                                   -->
+<!-- ============================================================ -->
+<g filter="url(#glowGreen)">
+  <rect x="228" y="205" width="165" height="55" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  <text x="310" y="228" text-anchor="middle" fill="#1a1a2e" font-size="13" font-weight="700">pHash Compute</text>
+  <text x="310" y="245" text-anchor="middle" fill="#1a1a2e" font-size="10" font-weight="500" opacity="0.75">16x16 = 256-bit</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: is_grayscale() (Green)                                  -->
+<!-- ============================================================ -->
+<g filter="url(#glowGreen)">
+  <rect x="228" y="425" width="165" height="55" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  <text x="310" y="449" text-anchor="middle" fill="#1a1a2e" font-size="13" font-weight="700">is_grayscale()</text>
+  <text x="310" y="466" text-anchor="middle" fill="#1a1a2e" font-size="10" font-weight="500" opacity="0.75">B/W Detection</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: Qdrant ANN Search + tag filter (Purple)                 -->
+<!-- ============================================================ -->
+<g filter="url(#glowPurple)">
+  <rect x="420" y="120" width="130" height="75" rx="8" fill="url(#gradPurple)" filter="url(#shadowSmall)"/>
+  <text x="485" y="147" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Qdrant ANN</text>
+  <text x="485" y="163" text-anchor="middle" fill="#fff" font-size="10" font-weight="500" opacity="0.85">Search</text>
+  <text x="485" y="179" text-anchor="middle" fill="#fff" font-size="10" font-weight="500" opacity="0.85">+ tag filter</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- DIAMOND: Color Mismatch? (Orange border)                      -->
+<!-- ============================================================ -->
+<g filter="url(#glowOrange)">
+  <polygon points="790,440 870,500 790,560 710,500" fill="#141e35" stroke="#fbbf24" stroke-width="2" filter="url(#shadowSmall)"/>
+  <text x="790" y="495" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">Color</text>
+  <text x="790" y="511" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">Mismatch?</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: 60% CLIP / 40% pHash (Green) — "Same" path             -->
+<!-- ============================================================ -->
+<g filter="url(#glowGreen)">
+  <rect x="645" y="295" width="145" height="60" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
+  <text x="717" y="320" text-anchor="middle" fill="#1a1a2e" font-size="13" font-weight="700">60% CLIP</text>
+  <text x="717" y="339" text-anchor="middle" fill="#1a1a2e" font-size="13" font-weight="700">40% pHash</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: 85% CLIP / 15% pHash (Red) — "Different" path           -->
+<!-- ============================================================ -->
+<g filter="url(#glowRed)">
+  <rect x="645" y="155" width="145" height="60" rx="8" fill="url(#gradRed)" filter="url(#shadowSmall)"/>
+  <text x="717" y="180" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">85% CLIP</text>
+  <text x="717" y="199" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">15% pHash</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: Re-rank CLIP + pHash (Cyan)                             -->
+<!-- ============================================================ -->
+<g filter="url(#glowCyan)">
+  <rect x="1040" y="155" width="175" height="70" rx="10" fill="url(#gradCyan)" filter="url(#shadowSmall)"/>
+  <text x="1127" y="184" text-anchor="middle" fill="#1a1a2e" font-size="14" font-weight="700">Re-rank</text>
+  <text x="1127" y="204" text-anchor="middle" fill="#1a1a2e" font-size="11" font-weight="600">CLIP + pHash</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- NODE: Results + Pre-computed Descriptions (Blue)               -->
+<!-- ============================================================ -->
+<g filter="url(#glowBlue)">
+  <rect x="1040" y="280" width="300" height="80" rx="10" fill="url(#gradBlue)" filter="url(#shadowSmall)"/>
+  <text x="1190" y="312" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Results</text>
+  <text x="1190" y="333" text-anchor="middle" fill="#fff" font-size="11" font-weight="500" opacity="0.85">+ Pre-computed Descriptions</text>
+</g>
+
+<!-- ============================================================ -->
+<!-- CONNECTIONS (arrows)                                           -->
+<!-- ============================================================ -->
+
+<!-- Query Image → CLIP Embed -->
+<path d="M 180,285 C 200,285 205,157 228,157" fill="none" stroke="#fb7185" stroke-width="2" marker-end="url(#arrowRed)" opacity="0.8"/>
+
+<!-- Query Image → pHash Compute -->
+<path d="M 180,300 L 200,300 C 210,300 210,232 228,232" fill="none" stroke="#00d2a0" stroke-width="2" marker-end="url(#arrowGreen)" opacity="0.8"/>
+
+<!-- Query Image → is_grayscale() -->
+<path d="M 180,315 C 200,315 205,452 228,452" fill="none" stroke="#00d2a0" stroke-width="2" marker-end="url(#arrowGreen)" opacity="0.8"/>
+
+<!-- CLIP Embed → Qdrant ANN Search -->
+<path d="M 393,157 L 420,157" fill="none" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowPurple)" opacity="0.8"/>
+
+<!-- Qdrant ANN Search → Re-rank (right, into card 3) -->
+<path d="M 550,157 C 600,157 600,185 650,185 L 780,185 C 900,185 950,190 1040,190" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowPurple)" opacity="0.6" stroke-dasharray="6,3"/>
+<!-- Label: top_k candidates -->
+<text x="830" y="178" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="500" opacity="0.7">top_k candidates</text>
+
+<!-- pHash Compute → Re-rank -->
+<path d="M 393,232 C 500,232 600,200 750,200 C 880,200 950,195 1040,195" fill="none" stroke="#00d2a0" stroke-width="1.5" marker-end="url(#arrowGreen)" opacity="0.6" stroke-dasharray="6,3"/>
+<!-- Label: hash value -->
+<text x="680" y="222" text-anchor="middle" fill="#00d2a0" font-size="9" font-weight="500" opacity="0.7">hash value</text>
+
+<!-- is_grayscale() → Diamond (Color Mismatch?) -->
+<path d="M 393,452 C 500,452 600,480 650,490 L 710,500" fill="none" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrowOrange)" opacity="0.8"/>
+
+<!-- Diamond "Same" → 60% CLIP / 40% pHash (upward) -->
+<path d="M 790,440 C 790,400 760,370 717,355" fill="none" stroke="#00d2a0" stroke-width="2" marker-end="url(#arrowGreen)" opacity="0.8"/>
+<!-- Label: Same -->
+<text x="770" y="393" text-anchor="middle" fill="#00d2a0" font-size="11" font-weight="600">Same</text>
+
+<!-- Diamond "Different" → 85% CLIP / 15% pHash (upward far) -->
+<path d="M 790,440 C 790,370 750,280 717,215" fill="none" stroke="#fb7185" stroke-width="2" marker-end="url(#arrowRed)" opacity="0.8"/>
+<!-- Label: Different -->
+<text x="770" y="282" text-anchor="middle" fill="#fb7185" font-size="11" font-weight="600">Different</text>
+
+<!-- 60% CLIP / 40% pHash → Re-rank -->
+<path d="M 790,325 C 900,325 950,210 1040,200" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrowCyan)" opacity="0.7"/>
+
+<!-- 85% CLIP / 15% pHash → Re-rank -->
+<path d="M 790,185 C 900,185 950,190 1040,190" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrowCyan)" opacity="0.7"/>
+
+<!-- Re-rank → Results -->
+<path d="M 1127,225 L 1127,280" fill="none" stroke="#4facfe" stroke-width="2.5" marker-end="url(#arrowBlue)" opacity="0.8"/>
+
+<!-- ============================================================ -->
+<!-- TIMING ANNOTATIONS                                            -->
+<!-- ============================================================ -->
+<rect x="228" y="275" width="95" height="22" rx="4" fill="#1a2744" stroke="#1e3a5f" stroke-width="0.5"/>
+<text x="275" y="290" text-anchor="middle" fill="#64748b" font-size="9" font-weight="500">~15 ms</text>
+
+<rect x="420" y="200" width="95" height="22" rx="4" fill="#1a2744" stroke="#1e3a5f" stroke-width="0.5"/>
+<text x="467" y="215" text-anchor="middle" fill="#64748b" font-size="9" font-weight="500">~5 ms (ANN)</text>
+
+<rect x="1040" y="240" width="95" height="22" rx="4" fill="#1a2744" stroke="#1e3a5f" stroke-width="0.5"/>
+<text x="1087" y="255" text-anchor="middle" fill="#64748b" font-size="9" font-weight="500">~2 ms</text>
+
+<rect x="1040" y="375" width="105" height="22" rx="4" fill="#1a2744" stroke="#1e3a5f" stroke-width="0.5"/>
+<text x="1092" y="390" text-anchor="middle" fill="#64748b" font-size="9" font-weight="500">~25 ms total</text>
+
+<!-- ============================================================ -->
+<!-- LEGEND                                                        -->
+<!-- ============================================================ -->
+<rect x="30" y="540" width="150" height="140" rx="8" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowSmall)"/>
+<text x="105" y="562" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="600" letter-spacing="1.5">LEGEND</text>
+
+<!-- Legend items -->
+<rect x="44" y="574" width="10" height="10" rx="2" fill="url(#gradOrange)"/>
+<text x="62" y="584" fill="#cbd5e1" font-size="10">Input</text>
+
+<rect x="44" y="594" width="10" height="10" rx="2" fill="url(#gradRed)"/>
+<text x="62" y="604" fill="#cbd5e1" font-size="10">CLIP Model</text>
+
+<rect x="44" y="614" width="10" height="10" rx="2" fill="url(#gradGreen)"/>
+<text x="62" y="624" fill="#cbd5e1" font-size="10">Hashing / Scoring</text>
+
+<rect x="44" y="634" width="10" height="10" rx="2" fill="url(#gradPurple)"/>
+<text x="62" y="644" fill="#cbd5e1" font-size="10">Vector DB</text>
+
+<rect x="44" y="654" width="10" height="10" rx="2" fill="url(#gradCyan)"/>
+<text x="62" y="664" fill="#cbd5e1" font-size="10">Re-ranking</text>
+
+<!-- ============================================================ -->
+<!-- PIPELINE SUMMARY (bottom right)                               -->
+<!-- ============================================================ -->
+<rect x="1010" y="460" width="360" height="90" rx="8" fill="url(#cardBlue)" stroke="#1e3a5f" stroke-width="1" filter="url(#shadowSmall)"/>
+<text x="1190" y="485" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="600" letter-spacing="1.5">PIPELINE SUMMARY</text>
+<text x="1190" y="506" text-anchor="middle" fill="#cbd5e1" font-size="11">Qdrant pre-filters by tags (color, source, date)</text>
+<text x="1190" y="522" text-anchor="middle" fill="#cbd5e1" font-size="11">CLIP + pHash re-rank with adaptive weights</text>
+<text x="1190" y="538" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">End-to-end latency: ~25 ms</text>
+
+<!-- ============================================================ -->
+<!-- BOTTOM DECORATIVE LINE                                        -->
+<!-- ============================================================ -->
+<line x1="30" y1="680" x2="1370" y2="680" stroke="#1e3a5f" stroke-width="1" opacity="0.3"/>
+<text x="700" y="695" text-anchor="middle" fill="#334155" font-size="9" letter-spacing="2">PIKAMATCH SEARCH PIPELINE v2.0</text>
+
+</svg>
