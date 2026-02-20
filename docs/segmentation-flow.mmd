@@ -1,0 +1,25 @@
+graph TB
+    INPUT["Full-Page Scan<br/>(2931x3784 px)"] --> GRAY["Grayscale<br/>Conversion"]
+    GRAY --> BLUR["Gaussian Blur<br/>(5x5 kernel)"]
+
+    BLUR --> PASS1["Pass 1<br/>Adaptive Threshold<br/>(31, 10)"]
+    BLUR --> PASS2["Pass 2<br/>Canny Edge<br/>(30, 100)"]
+
+    PASS1 --> COMBINE["Bitwise OR"]
+    PASS2 --> COMBINE
+
+    COMBINE --> MORPH["Morphological Close<br/>(15x15 kernel)"]
+    MORPH --> CONTOURS["Find External<br/>Contours"]
+
+    CONTOURS --> FILTER["Filter<br/>2-85% area<br/>>80px dim<br/>aspect <5:1<br/>not border"]
+
+    FILTER --> MERGE["Merge Overlaps<br/>IoU >0.50<br/>Containment >0.80"]
+
+    MERGE --> CROP["Crop + Convert<br/>px → PDF coords<br/>(x * 72/dpi)"]
+
+    CROP --> OUTPUT["Sub-images<br/>(5-15 per page)"]
+
+    style INPUT fill:#4a90d9,stroke:#2c5f9e,color:#fff
+    style PASS1 fill:#e74c3c,stroke:#c0392b,color:#fff
+    style PASS2 fill:#e67e22,stroke:#d35400,color:#fff
+    style OUTPUT fill:#50b87a,stroke:#2e7d4e,color:#fff

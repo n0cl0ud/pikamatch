@@ -1,0 +1,28 @@
+graph TB
+    subgraph "Host Machine"
+        USER["User / Client"]
+    end
+
+    subgraph "Docker Network (pikamatch)"
+        subgraph "GPU Services"
+            QWEN["qwen-vl<br/>vLLM + Qwen2.5-VL-7B-AWQ<br/>~5 GB VRAM<br/>:8000 → :8001"]
+            CLIP["clip-api<br/>CLIP + pHash + OpenCV<br/>~1.5 GB VRAM<br/>:8002 → :11434"]
+        end
+
+        subgraph "CPU Services"
+            QDRANT["qdrant<br/>Vector Database<br/>768-dim COSINE<br/>:6333 → :9000"]
+            UI["ui<br/>Streamlit<br/>:8501 → :1234"]
+        end
+    end
+
+    USER -->|":11434"| CLIP
+    USER -->|":1234"| UI
+    USER -->|":9000"| QDRANT
+    UI -->|"REST :8002"| CLIP
+    CLIP -->|"/v1/chat/completions"| QWEN
+    CLIP -->|"gRPC/REST :6333"| QDRANT
+
+    style QWEN fill:#4a90d9,stroke:#2c5f9e,color:#fff
+    style CLIP fill:#d94a7a,stroke:#9e2c55,color:#fff
+    style QDRANT fill:#50b87a,stroke:#2e7d4e,color:#fff
+    style UI fill:#f5a623,stroke:#c17d12,color:#fff

@@ -1,0 +1,28 @@
+graph LR
+    PDF["PDF File"] --> EXTRACT["PyMuPDF<br/>Extract Images"]
+    EXTRACT --> CHECK{"Image covers<br/>>60% of page?"}
+
+    CHECK -->|"Yes"| OPENCV["OpenCV<br/>Segment Sub-images"]
+    CHECK -->|"No"| IMAGES["Individual Images"]
+    OPENCV --> IMAGES
+
+    EXTRACT -.->|"No images found"| RENDER["Render Page<br/>@ 200 DPI"]
+    RENDER --> OPENCV2["OpenCV<br/>Segment"]
+    OPENCV2 --> IMAGES
+
+    IMAGES --> CLIPEMB["CLIP ViT-L/14<br/>Embed (768-dim)"]
+    IMAGES --> PHASH["pHash<br/>16x16 = 256-bit"]
+    IMAGES --> GRAY["is_grayscale()<br/>B&W Detection"]
+    IMAGES --> VLM["Qwen2.5-VL<br/>Extract Description"]
+
+    CLIPEMB --> STORE["Qdrant<br/>Store Vector + Payload"]
+    PHASH --> STORE
+    GRAY --> STORE
+    VLM --> STORE
+
+    style PDF fill:#4a90d9,stroke:#2c5f9e,color:#fff
+    style OPENCV fill:#e74c3c,stroke:#c0392b,color:#fff
+    style OPENCV2 fill:#e74c3c,stroke:#c0392b,color:#fff
+    style CLIPEMB fill:#d94a7a,stroke:#9e2c55,color:#fff
+    style VLM fill:#4a90d9,stroke:#2c5f9e,color:#fff
+    style STORE fill:#50b87a,stroke:#2e7d4e,color:#fff

@@ -1,0 +1,21 @@
+graph LR
+    IMG["Query Image<br/>(JPG/PNG)"] --> CLIPQ["CLIP ViT-L/14<br/>Embed"]
+    IMG --> PHASHQ["pHash<br/>Compute"]
+    IMG --> GRAYQ["is_grayscale()"]
+
+    CLIPQ --> SEARCH["Qdrant<br/>ANN Search<br/>+ tag filter"]
+    SEARCH --> RERANK["Re-rank<br/>CLIP + pHash"]
+
+    PHASHQ --> RERANK
+    GRAYQ --> SCORING{"Color<br/>Mismatch?"}
+    SCORING -->|"Same"| W1["60% CLIP<br/>40% pHash"]
+    SCORING -->|"Different"| W2["85% CLIP<br/>15% pHash"]
+    W1 --> RERANK
+    W2 --> RERANK
+
+    RERANK --> RESULTS["Results<br/>+ Pre-computed<br/>Descriptions"]
+
+    style IMG fill:#f5a623,stroke:#c17d12,color:#fff
+    style SEARCH fill:#50b87a,stroke:#2e7d4e,color:#fff
+    style CLIPQ fill:#d94a7a,stroke:#9e2c55,color:#fff
+    style RESULTS fill:#4a90d9,stroke:#2c5f9e,color:#fff
