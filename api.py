@@ -1271,34 +1271,36 @@ async def scan(
 
 @app.get("/index/status", dependencies=[Depends(verify_api_key)])
 async def index_status(limit: int = 25, offset: int = 0):
-    """Return status of indexed PDFs with pagination (default 25 per page)."""
+    """Return status of indexed PDFs with pagination (default 25 per page).
+
+    Uses filesystem (indexed_pdfs dir) for PDF list and Qdrant count() per PDF
+    instead of scrolling all vectors (which timeouts on large collections).
+    """
     collection = qdrant.get_collection(QDRANT_COLLECTION)
     total_vectors = collection.points_count
 
-    # Get unique PDF filenames — use payload index for fast grouped count
-    # Scroll in batches of 500 (Qdrant can timeout on very large single scrolls)
-    pdf_counts: dict[str, int] = {}
-    scroll_offset = None
-    while True:
-        scroll_result = qdrant.scroll(
-            collection_name=QDRANT_COLLECTION,
-            limit=500,
-            offset=scroll_offset,
-            with_payload=["pdf_filename"],
-            with_vectors=False,
-        )
-        points, next_offset = scroll_result
-        for point in points:
-            pdf_name = point.payload.get("pdf_filename", "unknown")
-            pdf_counts[pdf_name] = pdf_counts.get(pdf_name, 0) + 1
-        if next_offset is None:
-            break
-        scroll_offset = next_offset
+    # List PDFs from filesystem (instant, no Qdrant scroll needed)
+    all_pdf_names = sorted(
+        f for f in os.listdir(INDEXED_PDFS_DIR)
+        if os.path.isfile(os.path.join(INDEXED_PDFS_DIR, f))
+    )
+    total_pdfs = len(all_pdf_names)
+    page_names = all_pdf_names[offset:offset + limit]
 
-    all_pdfs = sorted(pdf_counts.items())
-    total_pdfs = len(all_pdfs)
-    page_pdfs = all_pdfs[offset:offset + limit]
-    pdfs = [{"pdf": name, "images": count} for name, count in page_pdfs]
+    # Get image count per PDF using Qdrant count() with filter (fast, no scroll)
+    pdfs = []
+    for pdf_name in page_names:
+        try:
+            count_result = qdrant.count(
+                collection_name=QDRANT_COLLECTION,
+                count_filter=Filter(
+                    must=[FieldCondition(key="pdf_filename", match=MatchValue(value=pdf_name))]
+                ),
+                exact=False,
+            )
+            pdfs.append({"pdf": pdf_name, "images": count_result.count})
+        except Exception:
+            pdfs.append({"pdf": pdf_name, "images": "?"})
 
     return {
         "total_vectors": total_vectors,
