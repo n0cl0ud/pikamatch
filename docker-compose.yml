@@ -51,7 +51,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
       interval: 10s

@@ -30,26 +30,45 @@ def api_headers() -> dict:
 @st.cache_resource
 def get_api_client() -> httpx.Client:
     """Persistent HTTP client with connection pooling (survives Streamlit reruns)."""
+    transport = httpx.HTTPTransport(retries=2)
     return httpx.Client(
         base_url=API_URL,
         headers=api_headers(),
         timeout=30.0,
+        transport=transport,
     )
 
 
+def _reset_client():
+    """Reset the HTTP client (e.g. after container restart)."""
+    get_api_client.clear()
+
+
 def api_get(path: str, **kwargs) -> httpx.Response:
-    """GET request using persistent client."""
-    return get_api_client().get(path, **kwargs)
+    """GET request with auto-reconnect on stale connections."""
+    try:
+        return get_api_client().get(path, **kwargs)
+    except (httpx.RemoteProtocolError, httpx.ConnectError):
+        _reset_client()
+        return get_api_client().get(path, **kwargs)
 
 
 def api_post(path: str, **kwargs) -> httpx.Response:
-    """POST request using persistent client."""
-    return get_api_client().post(path, **kwargs)
+    """POST request with auto-reconnect on stale connections."""
+    try:
+        return get_api_client().post(path, **kwargs)
+    except (httpx.RemoteProtocolError, httpx.ConnectError):
+        _reset_client()
+        return get_api_client().post(path, **kwargs)
 
 
 def api_delete(path: str, **kwargs) -> httpx.Response:
-    """DELETE request using persistent client."""
-    return get_api_client().delete(path, **kwargs)
+    """DELETE request with auto-reconnect on stale connections."""
+    try:
+        return get_api_client().delete(path, **kwargs)
+    except (httpx.RemoteProtocolError, httpx.ConnectError):
+        _reset_client()
+        return get_api_client().delete(path, **kwargs)
 
 
 # ============================================================
