@@ -359,7 +359,7 @@ with tab4:
             f"{API_URL}/index/status",
             params={"limit": PAGE_SIZE, "offset": current_offset},
             headers=api_headers(),
-            timeout=10.0,
+            timeout=30.0,
         )
         r.raise_for_status()
         status = r.json()
@@ -377,7 +377,7 @@ with tab4:
                 col_count.write(f"{item['images']} imgs")
                 if col_del.button("🗑️", key=f"del_{item['pdf']}"):
                     try:
-                        rd = httpx.delete(f"{API_URL}/index/{item['pdf']}", headers=api_headers(), timeout=10.0)
+                        rd = httpx.delete(f"{API_URL}/index/{item['pdf']}", headers=api_headers(), timeout=30.0)
                         rd.raise_for_status()
                         st.success(f"Deleted {item['pdf']}")
                         st.rerun()
@@ -401,7 +401,7 @@ with tab4:
             st.markdown("---")
             if st.button("🗑️ Clear entire index", key="btn_clear_index"):
                 try:
-                    rd = httpx.delete(f"{API_URL}/index", headers=api_headers(), timeout=10.0)
+                    rd = httpx.delete(f"{API_URL}/index", headers=api_headers(), timeout=30.0)
                     rd.raise_for_status()
                     st.session_state.pdf_page = 0
                     st.success("Index cleared!")
