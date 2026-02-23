@@ -34,7 +34,7 @@ def get_api_client() -> httpx.Client:
     return httpx.Client(
         base_url=API_URL,
         headers=api_headers(),
-        timeout=30.0,
+        timeout=60.0,
         transport=transport,
     )
 
@@ -48,7 +48,7 @@ def api_get(path: str, **kwargs) -> httpx.Response:
     """GET request with auto-reconnect on stale connections."""
     try:
         return get_api_client().get(path, **kwargs)
-    except (httpx.RemoteProtocolError, httpx.ConnectError):
+    except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException):
         _reset_client()
         return get_api_client().get(path, **kwargs)
 
@@ -57,7 +57,7 @@ def api_post(path: str, **kwargs) -> httpx.Response:
     """POST request with auto-reconnect on stale connections."""
     try:
         return get_api_client().post(path, **kwargs)
-    except (httpx.RemoteProtocolError, httpx.ConnectError):
+    except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException):
         _reset_client()
         return get_api_client().post(path, **kwargs)
 
@@ -66,7 +66,7 @@ def api_delete(path: str, **kwargs) -> httpx.Response:
     """DELETE request with auto-reconnect on stale connections."""
     try:
         return get_api_client().delete(path, **kwargs)
-    except (httpx.RemoteProtocolError, httpx.ConnectError):
+    except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException):
         _reset_client()
         return get_api_client().delete(path, **kwargs)
 
@@ -83,9 +83,9 @@ def fetch_health() -> dict:
     return r.json()
 
 
-@st.cache_data(ttl=15, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def fetch_index_status(limit: int, offset: int) -> dict:
-    """Fetch index status with pagination, cached for 15s. Errors are NOT cached."""
+    """Fetch index status with pagination, cached for 10s. Errors are NOT cached."""
     r = api_get("/index/status", params={"limit": limit, "offset": offset})
     r.raise_for_status()
     return r.json()
@@ -421,9 +421,11 @@ with tab4:
         status = None
         st.warning(f"Could not fetch index status: {e}")
 
-    if status is not None and status.get("total_vectors", 0) == 0:
+    if status is None:
+        st.info("Loading... the API may be busy. Refresh in a few seconds.")
+    elif status.get("total_vectors", 0) == 0:
         st.info("No PDFs indexed yet. Upload PDFs above to get started.")
-    elif status is not None:
+    else:
         col_m1, col_m2 = st.columns(2)
         col_m1.metric("Total vectors", status.get("total_vectors", 0))
         col_m2.metric("Total PDFs", status.get("total_pdfs", 0))

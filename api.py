@@ -27,7 +27,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from PIL import Image
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
+from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PayloadSchemaType, PointStruct, VectorParams
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("pikamatch")
@@ -106,6 +106,23 @@ except Exception:
         vectors_config=VectorParams(size=CLIP_DIM, distance=Distance.COSINE),
     )
     logger.info(f"Created Qdrant collection '{QDRANT_COLLECTION}'.")
+
+
+def _ensure_payload_indexes():
+    """Create keyword indexes on frequently filtered fields (idempotent)."""
+    for field in ("pdf_filename", "tag"):
+        try:
+            qdrant.create_payload_index(
+                collection_name=QDRANT_COLLECTION,
+                field_name=field,
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
+            logger.info(f"Created payload index on '{field}'.")
+        except Exception:
+            pass  # Already exists
+
+
+_ensure_payload_indexes()
 
 app = FastAPI(title="PikaMatch API", version="1.0.0")
 
@@ -1346,6 +1363,7 @@ async def clear_index():
         collection_name=QDRANT_COLLECTION,
         vectors_config=VectorParams(size=CLIP_DIM, distance=Distance.COSINE),
     )
+    _ensure_payload_indexes()
 
     # Remove all stored PDFs
     for f in os.listdir(INDEXED_PDFS_DIR):
