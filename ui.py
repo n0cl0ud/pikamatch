@@ -34,7 +34,7 @@ def api_headers() -> dict:
 with st.sidebar:
     st.header("Status")
     try:
-        r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=10.0)
+        r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=30.0)
         r.raise_for_status()
         health = r.json()
         clip_status = health.get("clip", "unknown")
