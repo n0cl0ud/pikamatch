@@ -169,6 +169,7 @@ def display_description(desc: dict):
 
     fields = [
         ("Description", "description"),
+        ("Titre", "titre"),
         ("Taille", "taille"),
         ("Origine", "origine"),
         ("Référence", "reference"),

@@ -73,6 +73,7 @@ Extrais les champs suivants au format JSON. Mets null pour les champs absents :
 
 {
   "description": "description textuelle de l'image",
+  "titre": "titre de l'oeuvre",
   "taille": "dimensions (ex: 300x225 px)",
   "origine": "source/fournisseur",
   "reference": "code ou référence",

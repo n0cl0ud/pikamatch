@@ -44,6 +44,7 @@ def api_headers() -> dict:
 
 DESC_FIELDS = [
     ("description", "Description"),
+    ("titre", "Titre"),
     ("auteur", "Auteur"),
     ("date", "Date"),
     ("taille", "Taille"),
