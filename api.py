@@ -116,8 +116,9 @@ def _ensure_payload_indexes():
                 collection_name=QDRANT_COLLECTION,
                 field_name=field,
                 field_schema=PayloadSchemaType.KEYWORD,
+                wait=False,
             )
-            logger.info(f"Created payload index on '{field}'.")
+            logger.info(f"Requested payload index on '{field}'.")
         except Exception:
             pass  # Already exists
 
