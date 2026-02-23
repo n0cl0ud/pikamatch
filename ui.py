@@ -13,10 +13,18 @@ import streamlit as st
 from PIL import Image
 
 API_URL = os.getenv("API_URL", "http://localhost:8002")
+API_KEY = os.getenv("API_KEY", "")
 TIMEOUT = 120.0
 
 st.set_page_config(page_title="PikaMatch", page_icon="⚡", layout="wide")
 st.title("⚡ PikaMatch — Image Matching Pipeline")
+
+
+def api_headers() -> dict:
+    """Return headers with API key if configured."""
+    if API_KEY:
+        return {"X-API-Key": API_KEY}
+    return {}
 
 
 # ============================================================
@@ -26,7 +34,7 @@ st.title("⚡ PikaMatch — Image Matching Pipeline")
 with st.sidebar:
     st.header("Status")
     try:
-        r = httpx.get(f"{API_URL}/health", timeout=5.0)
+        r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=5.0)
         health = r.json()
         clip_status = health.get("clip", "unknown")
         vlm_status = health.get("vlm", "unknown")
@@ -143,7 +151,7 @@ with tab1:
                 data = {"top_k": str(top_k), "threshold": str(threshold)}
 
                 try:
-                    r = httpx.post(f"{API_URL}/match", files=files, data=data, timeout=TIMEOUT)
+                    r = httpx.post(f"{API_URL}/match", files=files, data=data, headers=api_headers(), timeout=TIMEOUT)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -218,7 +226,7 @@ with tab2:
                 data = {"threshold": str(batch_threshold)}
 
                 try:
-                    r = httpx.post(f"{API_URL}/match-batch", files=files, data=data, timeout=TIMEOUT * 2)
+                    r = httpx.post(f"{API_URL}/match-batch", files=files, data=data, headers=api_headers(), timeout=TIMEOUT * 2)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -265,7 +273,7 @@ with tab3:
                 files = {"pdf": (pdf_preview.name, pdf_preview.getvalue(), "application/pdf")}
 
                 try:
-                    r = httpx.post(f"{API_URL}/extract", files=files, timeout=TIMEOUT * 3)
+                    r = httpx.post(f"{API_URL}/extract", files=files, headers=api_headers(), timeout=TIMEOUT * 3)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -320,7 +328,7 @@ with tab4:
                     files.append(("pdfs", (pdf.name, pdf.getvalue(), "application/pdf")))
 
                 try:
-                    r = httpx.post(f"{API_URL}/index", files=files, timeout=TIMEOUT * 5)
+                    r = httpx.post(f"{API_URL}/index", files=files, headers=api_headers(), timeout=TIMEOUT * 5)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -335,7 +343,7 @@ with tab4:
     st.markdown("---")
     st.markdown("**Currently indexed PDFs:**")
     try:
-        r = httpx.get(f"{API_URL}/index/status", timeout=10.0)
+        r = httpx.get(f"{API_URL}/index/status", headers=api_headers(), timeout=10.0)
         r.raise_for_status()
         status = r.json()
 
@@ -350,7 +358,7 @@ with tab4:
                 col_count.write(f"{item['images']} imgs")
                 if col_del.button("🗑️", key=f"del_{item['pdf']}"):
                     try:
-                        rd = httpx.delete(f"{API_URL}/index/{item['pdf']}", timeout=10.0)
+                        rd = httpx.delete(f"{API_URL}/index/{item['pdf']}", headers=api_headers(), timeout=10.0)
                         rd.raise_for_status()
                         st.success(f"Deleted {item['pdf']}")
                         st.rerun()
@@ -359,7 +367,7 @@ with tab4:
 
             if st.button("🗑️ Clear entire index", key="btn_clear_index"):
                 try:
-                    rd = httpx.delete(f"{API_URL}/index", timeout=10.0)
+                    rd = httpx.delete(f"{API_URL}/index", headers=api_headers(), timeout=10.0)
                     rd.raise_for_status()
                     st.success("Index cleared!")
                     st.rerun()
@@ -388,7 +396,7 @@ with tab4:
                 data = {"top_k": str(scan_top_k), "threshold": str(scan_threshold)}
 
                 try:
-                    r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT * 3)
+                    r = httpx.post(f"{API_URL}/scan", files=files, data=data, headers=api_headers(), timeout=TIMEOUT * 3)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:

@@ -23,7 +23,7 @@ import httpx
 import imagehash
 import numpy as np
 import torch
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image
 from qdrant_client import QdrantClient
@@ -50,6 +50,13 @@ MIN_IMAGE_BYTES = 2048  # skip < 2KB (tracking pixels)
 MIN_IMAGE_DIM = 50  # skip < 50px
 RENDER_DPI = 200
 MAX_VLM_PX = 1200
+VLM_TIMEOUT = 120.0  # seconds — prevent infinite hangs on VLM calls
+MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB per file
+MAX_CONCURRENT_REQUESTS = 4  # prevent GPU overload
+
+# --- Security ---
+API_KEY = os.getenv("API_KEY", "")
+_active_requests = 0
 
 # --- Sub-image segmentation constants ---
 PAGE_COVERAGE_THRESHOLD = 0.60    # Image covering >60% of page triggers segmentation
@@ -101,6 +108,44 @@ except Exception:
     logger.info(f"Created Qdrant collection '{QDRANT_COLLECTION}'.")
 
 app = FastAPI(title="PikaMatch API", version="1.0.0")
+
+
+# --- Auth dependency ---
+async def verify_api_key(x_api_key: str = Header(None)):
+    """Verify API key if one is configured. Skip auth if API_KEY is empty."""
+    if not API_KEY:
+        return  # No key configured — open access (dev mode)
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+# --- Concurrency guard middleware ---
+@app.middleware("http")
+async def concurrency_guard(request: Request, call_next):
+    global _active_requests
+    # Skip guard for health checks
+    if request.url.path == "/health":
+        return await call_next(request)
+    if _active_requests >= MAX_CONCURRENT_REQUESTS:
+        return JSONResponse(status_code=503, content={"detail": "Server busy, try again later"})
+    _active_requests += 1
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        _active_requests -= 1
+
+
+# --- Upload size validation helper ---
+async def validate_upload_size(file: UploadFile, label: str = "file"):
+    """Read file bytes and reject if over MAX_UPLOAD_BYTES."""
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"{label} too large ({len(data)} bytes, max {MAX_UPLOAD_BYTES})",
+        )
+    return data
 
 
 # ============================================================
@@ -377,7 +422,7 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
             if len(img_bytes) < MIN_IMAGE_BYTES:
                 continue
 
-            md5 = hashlib.md5(img_bytes).hexdigest()
+            md5 = hashlib.sha256(img_bytes).hexdigest()
             if md5 in seen_hashes:
                 continue
             seen_hashes.add(md5)
@@ -563,7 +608,7 @@ async def call_vlm(zone_img: Image.Image) -> dict:
         "max_tokens": 1024,
     }
 
-    async with httpx.AsyncClient(timeout=None) as client:
+    async with httpx.AsyncClient(timeout=VLM_TIMEOUT) as client:
         resp = await client.post(f"{VLM_URL}/v1/chat/completions", json=payload)
         resp.raise_for_status()
         data = resp.json()
@@ -577,7 +622,8 @@ async def call_vlm(zone_img: Image.Image) -> dict:
 # ============================================================
 
 @app.get("/health")
-async def health():
+async def health(x_api_key: str = Header(None)):
+    """Health check — basic status for healthchecks, detailed info requires API key."""
     clip_ok = clip_model is not None
     vlm_ok = False
     try:
@@ -596,25 +642,29 @@ async def health():
     except Exception:
         pass
 
-    vram_info = {}
-    if torch.cuda.is_available():
-        vram_info = {
-            "allocated_mb": round(torch.cuda.memory_allocated() / 1e6, 1),
-            "reserved_mb": round(torch.cuda.memory_reserved() / 1e6, 1),
-            "total_mb": round(torch.cuda.get_device_properties(0).total_memory / 1e6, 1),
-        }
-
-    return {
+    # Basic response for unauthenticated healthchecks (Docker, load balancers)
+    response = {
         "clip": "ok" if clip_ok else "error",
         "vlm": "ok" if vlm_ok else "error",
         "qdrant": "ok" if qdrant_ok else "error",
-        "qdrant_vectors": qdrant_vectors,
-        "device": DEVICE,
-        "vram": vram_info,
     }
 
+    # Extended info only with valid API key (or if no key configured)
+    authenticated = (not API_KEY) or (x_api_key == API_KEY)
+    if authenticated:
+        response["qdrant_vectors"] = qdrant_vectors
+        response["device"] = DEVICE
+        if torch.cuda.is_available():
+            response["vram"] = {
+                "allocated_mb": round(torch.cuda.memory_allocated() / 1e6, 1),
+                "reserved_mb": round(torch.cuda.memory_reserved() / 1e6, 1),
+                "total_mb": round(torch.cuda.get_device_properties(0).total_memory / 1e6, 1),
+            }
 
-@app.post("/match")
+    return response
+
+
+@app.post("/match", dependencies=[Depends(verify_api_key)])
 async def match(
     jpg: UploadFile = File(...),
     pdf: UploadFile = File(...),
@@ -623,9 +673,9 @@ async def match(
 ):
     t_start = time.time()
 
-    # Read inputs
-    jpg_bytes = await jpg.read()
-    pdf_bytes = await pdf.read()
+    # Read and validate inputs
+    jpg_bytes = await validate_upload_size(jpg, "image")
+    pdf_bytes = await validate_upload_size(pdf, "PDF")
     ref_img = Image.open(io.BytesIO(jpg_bytes)).convert("RGB")
     ref_embedding = embed_image(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
@@ -799,14 +849,14 @@ async def match(
     }
 
 
-@app.post("/match-batch")
+@app.post("/match-batch", dependencies=[Depends(verify_api_key)])
 async def match_batch(
     pdf: UploadFile = File(...),
     images: list[UploadFile] = File(...),
     threshold: float = Form(0.70),
 ):
     t_start = time.time()
-    pdf_bytes = await pdf.read()
+    pdf_bytes = await validate_upload_size(pdf, "PDF")
     pdf_filename = pdf.filename or "unknown.pdf"
 
     # Check if this PDF is already indexed in Qdrant
@@ -955,10 +1005,10 @@ async def match_batch(
     }
 
 
-@app.post("/extract")
+@app.post("/extract", dependencies=[Depends(verify_api_key)])
 async def extract(pdf: UploadFile = File(...)):
     t_start = time.time()
-    pdf_bytes = await pdf.read()
+    pdf_bytes = await validate_upload_size(pdf, "PDF")
     pdf_images = extract_pdf_images(pdf_bytes)
 
     extractions = []
@@ -998,7 +1048,7 @@ async def extract(pdf: UploadFile = File(...)):
 # Qdrant Index / Scan Endpoints
 # ============================================================
 
-@app.post("/index")
+@app.post("/index", dependencies=[Depends(verify_api_key)])
 async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(False), tag: str = Form("")):
     """Index one or more PDFs into Qdrant for later searching."""
     t_start = time.time()
@@ -1006,7 +1056,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
     skipped = []
 
     for pdf_file in pdfs:
-        pdf_bytes = await pdf_file.read()
+        pdf_bytes = await validate_upload_size(pdf_file, f"PDF '{pdf_file.filename}'")
         pdf_filename = pdf_file.filename or "unknown.pdf"
 
         # Check if already indexed — skip unless force
@@ -1122,7 +1172,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
     }
 
 
-@app.post("/scan")
+@app.post("/scan", dependencies=[Depends(verify_api_key)])
 async def scan(
     image: UploadFile = File(...),
     top_k: int = Form(10),
@@ -1133,7 +1183,7 @@ async def scan(
     t_start = time.time()
 
     # Embed query image
-    img_bytes = await image.read()
+    img_bytes = await validate_upload_size(image, "image")
     ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     ref_embedding = embed_image(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
@@ -1219,7 +1269,7 @@ async def scan(
     }
 
 
-@app.get("/index/status")
+@app.get("/index/status", dependencies=[Depends(verify_api_key)])
 async def index_status():
     """Return status of indexed PDFs."""
     collection = qdrant.get_collection(QDRANT_COLLECTION)
@@ -1253,7 +1303,7 @@ async def index_status():
     }
 
 
-@app.delete("/index/{pdf_filename}")
+@app.delete("/index/{pdf_filename}", dependencies=[Depends(verify_api_key)])
 async def delete_pdf_index(pdf_filename: str):
     """Remove all vectors for a specific PDF from the index."""
     # Delete points matching the pdf_filename
@@ -1278,7 +1328,7 @@ async def delete_pdf_index(pdf_filename: str):
     }
 
 
-@app.delete("/index")
+@app.delete("/index", dependencies=[Depends(verify_api_key)])
 async def clear_index():
     """Clear the entire Qdrant index and stored PDFs."""
     # Recreate collection (fastest way to clear)

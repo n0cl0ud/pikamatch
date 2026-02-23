@@ -1,9 +1,8 @@
 services:
   qwen-vl:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.15.0
     container_name: qwen-vl
-    ports:
-      - "8001:8000"
+    # No ports exposed — internal only (clip-api talks to it via Docker network)
     environment:
       - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
       - LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/local/cuda/lib64
@@ -30,6 +29,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+        limits:
+          memory: 12G
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
@@ -39,12 +40,18 @@ services:
     restart: unless-stopped
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.16.3
     container_name: qdrant
-    ports:
-      - "9000:6333"
+    # No ports exposed — internal only (clip-api talks to it via Docker network)
+    environment:
+      - QDRANT__TELEMETRY_DISABLED=true
+      - QDRANT__SERVICE__ENABLE_CORS=false
     volumes:
       - qdrant_data:/qdrant/storage
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
       interval: 10s
@@ -64,8 +71,9 @@ services:
       - VLM_URL=http://qwen-vl:8000
       - QDRANT_URL=http://qdrant:6333
       - CUDA_VISIBLE_DEVICES=0
+      - API_KEY=${API_KEY}
     volumes:
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/home/appuser/.cache/huggingface
       - indexed_pdfs:/app/indexed_pdfs
     deploy:
       resources:
@@ -74,6 +82,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+        limits:
+          memory: 8G
     depends_on:
       qwen-vl:
         condition: service_healthy
@@ -96,9 +106,14 @@ services:
       - "1234:8501"
     environment:
       - API_URL=http://clip-api:8002
+      - API_KEY=${API_KEY}
     depends_on:
       clip-api:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     restart: unless-stopped
 
 volumes:

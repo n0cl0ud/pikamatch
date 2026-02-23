@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     git \
     curl \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
@@ -40,8 +41,19 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir --no-build-isolation \
     git+https://github.com/openai/CLIP.git
 
-COPY api.py .
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -s /sbin/nologin appuser
+
+# Create directories with correct ownership
+RUN mkdir -p /app/indexed_pdfs && chown -R appuser:appuser /app
+RUN mkdir -p /home/appuser/.cache/huggingface && chown -R appuser:appuser /home/appuser
+
+COPY --chown=appuser:appuser api.py .
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8002
 
+# Entrypoint fixes volume permissions then drops to appuser via gosu
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8002"]

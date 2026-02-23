@@ -32,7 +32,15 @@ import time
 import httpx
 
 API_URL = os.getenv("PIKAMATCH_API", "http://localhost:11434")
+API_KEY = os.getenv("PIKAMATCH_KEY", "")
 TIMEOUT = None  # No timeout — PDFs can be large and VLM extraction takes time
+
+
+def api_headers() -> dict:
+    """Return headers with API key if configured."""
+    if API_KEY:
+        return {"X-API-Key": API_KEY}
+    return {}
 
 DESC_FIELDS = [
     ("description", "Description"),
@@ -536,7 +544,7 @@ def strip_b64(result: dict, kind: str):
 
 
 def cmd_health(fmt: str):
-    r = httpx.get(f"{API_URL}/health", timeout=TIMEOUT)
+    r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     data = r.json()
     if fmt == "json":
@@ -564,7 +572,7 @@ def cmd_match(jpg_path: str, pdf_path: str, fmt: str):
             "jpg": (os.path.basename(jpg_path), f_jpg, "image/jpeg"),
             "pdf": (os.path.basename(pdf_path), f_pdf, "application/pdf"),
         }
-        r = httpx.post(f"{API_URL}/match", files=files, timeout=TIMEOUT)
+        r = httpx.post(f"{API_URL}/match", files=files, headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     strip_b64(result, "match")
@@ -574,7 +582,7 @@ def cmd_match(jpg_path: str, pdf_path: str, fmt: str):
 def cmd_extract(pdf_path: str, fmt: str):
     with open(pdf_path, "rb") as f_pdf:
         files = {"pdf": (os.path.basename(pdf_path), f_pdf, "application/pdf")}
-        r = httpx.post(f"{API_URL}/extract", files=files, timeout=TIMEOUT)
+        r = httpx.post(f"{API_URL}/extract", files=files, headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     strip_b64(result, "extract")
@@ -590,7 +598,7 @@ def cmd_batch(pdf_path: str, img_paths: list[str], fmt: str):
             img_handles.append(fh)
             files.append(("images", (os.path.basename(p), fh, "image/jpeg")))
 
-        r = httpx.post(f"{API_URL}/match-batch", files=files, timeout=TIMEOUT)
+        r = httpx.post(f"{API_URL}/match-batch", files=files, headers=api_headers(), timeout=TIMEOUT)
 
         for fh in img_handles:
             fh.close()
@@ -655,7 +663,7 @@ def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool =
             data["tag"] = tag
 
         try:
-            r = httpx.post(f"{API_URL}/index", files=files, data=data, timeout=TIMEOUT)
+            r = httpx.post(f"{API_URL}/index", files=files, data=data, headers=api_headers(), timeout=TIMEOUT)
             r.raise_for_status()
             result = r.json()
             for item in result.get("indexed", []):
@@ -684,7 +692,7 @@ def cmd_index(pdf_paths: list[str], fmt: str, batch_size: int = 1, force: bool =
 
 
 def cmd_index_status(fmt: str):
-    r = httpx.get(f"{API_URL}/index/status", timeout=TIMEOUT)
+    r = httpx.get(f"{API_URL}/index/status", headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     output(result, fmt, "index_status")
@@ -696,7 +704,7 @@ def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10, 
         data = {"top_k": str(top_k), "threshold": str(threshold)}
         if tag:
             data["tag"] = tag
-        r = httpx.post(f"{API_URL}/scan", files=files, data=data, timeout=TIMEOUT)
+        r = httpx.post(f"{API_URL}/scan", files=files, data=data, headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     strip_b64(result, "scan")
@@ -704,7 +712,7 @@ def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10, 
 
 
 def cmd_index_remove(pdf_filename: str, fmt: str):
-    r = httpx.delete(f"{API_URL}/index/{pdf_filename}", timeout=TIMEOUT)
+    r = httpx.delete(f"{API_URL}/index/{pdf_filename}", headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     if fmt == "json":
@@ -715,7 +723,7 @@ def cmd_index_remove(pdf_filename: str, fmt: str):
 
 
 def cmd_index_clear(fmt: str):
-    r = httpx.delete(f"{API_URL}/index", timeout=TIMEOUT)
+    r = httpx.delete(f"{API_URL}/index", headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
     result = r.json()
     if fmt == "json":
@@ -726,12 +734,15 @@ def cmd_index_clear(fmt: str):
 
 
 def main():
-    global API_URL
+    global API_URL, API_KEY
     api_override = get_option(sys.argv, "api", "")
     if api_override:
         API_URL = api_override.rstrip("/")
+    key_override = get_option(sys.argv, "key", "")
+    if key_override:
+        API_KEY = key_override
     # Strip --flag and their values from args
-    OPTS_WITH_VALUES = {"--api", "--batch-size", "--threshold", "--top_k", "--tag"}
+    OPTS_WITH_VALUES = {"--api", "--batch-size", "--threshold", "--top_k", "--tag", "--key"}
     args = []
     skip_next = False
     for a in sys.argv[1:]:
