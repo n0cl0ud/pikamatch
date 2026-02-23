@@ -550,12 +550,13 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
     return results
 
 
-def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox, tight: bool = False) -> Image.Image:
+def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox, tight: bool = False, xref: int = None) -> Image.Image:
     """Render the zone around an image bbox on a PDF page.
 
     Args:
         tight: Use reduced margins for segmented sub-images (avoids capturing
                neighbouring artworks on dense catalog pages).
+        xref: PDF image xref for precise relocation when bbox is off-page.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc[page_idx]
@@ -609,12 +610,16 @@ def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox, tight: bool = False)
                 continue
             alt_page = doc[alt_idx]
             for img_info in alt_page.get_images(full=True):
+                alt_xref = img_info[0]
+                # Match by xref (exact) or fall back to dimensions if no xref
+                if xref is not None and alt_xref != xref:
+                    continue
                 alt_bbox = alt_page.get_image_bbox(img_info)
-                # Same xref or same dimensions at a valid position
+                if xref is None and not (abs(alt_bbox.width - bbox.width) < 2
+                                         and abs(alt_bbox.height - bbox.height) < 2):
+                    continue
                 if (alt_bbox.width > 1 and alt_bbox.height > 1
-                        and alt_bbox.y0 >= 0 and alt_bbox.y1 <= alt_page.rect.y1
-                        and abs(alt_bbox.width - bbox.width) < 2
-                        and abs(alt_bbox.height - bbox.height) < 2):
+                        and alt_bbox.y0 >= 0 and alt_bbox.y1 <= alt_page.rect.y1):
                     # Found the visible instance — switch to this page
                     page = alt_page
                     page_rect = alt_page.rect
@@ -882,6 +887,7 @@ async def match(
                 "page": pdf_img_info["page"],
                 "bbox": pdf_img_info["bbox"],
                 "segmented": pdf_img_info.get("segmented", False),
+                "xref": pdf_img_info.get("xref"),
                 "pdf_image": pdf_img,
                 "size_vs_ref": {
                     "ref": f"{ref_img.width}x{ref_img.height}",
@@ -902,7 +908,7 @@ async def match(
     t_vlm_start = time.time()
     for m in matches:
         if m["bbox"] is not None:
-            zone_img = render_page_zone(pdf_bytes, m["page"], m["bbox"], tight=m.get("segmented", False))
+            zone_img = render_page_zone(pdf_bytes, m["page"], m["bbox"], tight=m.get("segmented", False), xref=m.get("xref"))
             if zone_img is None:
                 zone_img = m.get("pdf_image")  # Fallback for off-page images
             if zone_img is not None:
@@ -1074,6 +1080,7 @@ async def match_batch(
                     "page": pdf_img_info["page"],
                     "bbox": pdf_img_info["bbox"],
                     "segmented": pdf_img_info.get("segmented", False),
+                    "xref": pdf_img_info.get("xref"),
                     "size_vs_ref": {
                         "ref": f"{ref_img.width}x{ref_img.height}",
                         "pdf": f"{pdf_img_info['width']}x{pdf_img_info['height']}",
@@ -1085,7 +1092,7 @@ async def match_batch(
         if best_match and best_match["combined_score"] >= threshold:
             entry["matched"] = True
             if best_match["bbox"] is not None:
-                zone_img = render_page_zone(pdf_bytes, best_match["page"], best_match["bbox"], tight=best_match.get("segmented", False))
+                zone_img = render_page_zone(pdf_bytes, best_match["page"], best_match["bbox"], tight=best_match.get("segmented", False), xref=best_match.get("xref"))
                 if zone_img is None:
                     # Off-page image: find artwork for VLM fallback
                     for pi in pdf_images:
@@ -1136,7 +1143,7 @@ async def extract(pdf: UploadFile = File(...)):
         }
 
         if pdf_img_info["bbox"] is not None:
-            zone_img = render_page_zone(pdf_bytes, pdf_img_info["page"], pdf_img_info["bbox"], tight=pdf_img_info.get("segmented", False))
+            zone_img = render_page_zone(pdf_bytes, pdf_img_info["page"], pdf_img_info["bbox"], tight=pdf_img_info.get("segmented", False), xref=pdf_img_info.get("xref"))
             if zone_img is None:
                 zone_img = pdf_img_info["image"]  # Fallback for off-page images
             entry["zone_b64"] = image_to_b64(zone_img)
@@ -1238,7 +1245,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
             zone_b64 = None
             if bbox is not None:
                 try:
-                    zone_img = render_page_zone(pdf_bytes, img_info["page"], bbox, tight=img_info.get("segmented", False))
+                    zone_img = render_page_zone(pdf_bytes, img_info["page"], bbox, tight=img_info.get("segmented", False), xref=img_info.get("xref"))
                     if zone_img is None:
                         zone_img = pil_img  # Fallback: use artwork itself for off-page images
                     zone_b64 = image_to_b64(zone_img)
