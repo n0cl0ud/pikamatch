@@ -27,6 +27,31 @@ def api_headers() -> dict:
     return {}
 
 
+@st.cache_resource
+def get_api_client() -> httpx.Client:
+    """Persistent HTTP client with connection pooling (survives Streamlit reruns)."""
+    return httpx.Client(
+        base_url=API_URL,
+        headers=api_headers(),
+        timeout=30.0,
+    )
+
+
+def api_get(path: str, **kwargs) -> httpx.Response:
+    """GET request using persistent client."""
+    return get_api_client().get(path, **kwargs)
+
+
+def api_post(path: str, **kwargs) -> httpx.Response:
+    """POST request using persistent client."""
+    return get_api_client().post(path, **kwargs)
+
+
+def api_delete(path: str, **kwargs) -> httpx.Response:
+    """DELETE request using persistent client."""
+    return get_api_client().delete(path, **kwargs)
+
+
 # ============================================================
 # Cached API calls (avoid blocking on every Streamlit rerun)
 # ============================================================
@@ -34,7 +59,7 @@ def api_headers() -> dict:
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_health() -> dict:
     """Fetch health status, cached for 30s. Errors are NOT cached (exceptions bypass cache)."""
-    r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=30.0)
+    r = api_get("/health")
     r.raise_for_status()
     return r.json()
 
@@ -42,12 +67,7 @@ def fetch_health() -> dict:
 @st.cache_data(ttl=15, show_spinner=False)
 def fetch_index_status(limit: int, offset: int) -> dict:
     """Fetch index status with pagination, cached for 15s. Errors are NOT cached."""
-    r = httpx.get(
-        f"{API_URL}/index/status",
-        params={"limit": limit, "offset": offset},
-        headers=api_headers(),
-        timeout=30.0,
-    )
+    r = api_get("/index/status", params={"limit": limit, "offset": offset})
     r.raise_for_status()
     return r.json()
 
@@ -177,7 +197,7 @@ with tab1:
                 data = {"top_k": str(top_k), "threshold": str(threshold)}
 
                 try:
-                    r = httpx.post(f"{API_URL}/match", files=files, data=data, headers=api_headers(), timeout=TIMEOUT)
+                    r = api_post("/match", files=files, data=data, timeout=TIMEOUT)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -252,7 +272,7 @@ with tab2:
                 data = {"threshold": str(batch_threshold)}
 
                 try:
-                    r = httpx.post(f"{API_URL}/match-batch", files=files, data=data, headers=api_headers(), timeout=TIMEOUT * 2)
+                    r = api_post("/match-batch", files=files, data=data, timeout=TIMEOUT * 2)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -299,7 +319,7 @@ with tab3:
                 files = {"pdf": (pdf_preview.name, pdf_preview.getvalue(), "application/pdf")}
 
                 try:
-                    r = httpx.post(f"{API_URL}/extract", files=files, headers=api_headers(), timeout=TIMEOUT * 3)
+                    r = api_post("/extract", files=files, timeout=TIMEOUT * 3)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -354,7 +374,7 @@ with tab4:
                     files.append(("pdfs", (pdf.name, pdf.getvalue(), "application/pdf")))
 
                 try:
-                    r = httpx.post(f"{API_URL}/index", files=files, headers=api_headers(), timeout=TIMEOUT * 5)
+                    r = api_post("/index", files=files, timeout=TIMEOUT * 5)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
@@ -395,7 +415,7 @@ with tab4:
             col_count.write(f"{item['images']} imgs")
             if col_del.button("🗑️", key=f"del_{item['pdf']}"):
                 try:
-                    rd = httpx.delete(f"{API_URL}/index/{item['pdf']}", headers=api_headers(), timeout=30.0)
+                    rd = api_delete(f"/index/{item['pdf']}")
                     rd.raise_for_status()
                     st.success(f"Deleted {item['pdf']}")
                     fetch_index_status.clear()
@@ -420,7 +440,7 @@ with tab4:
         st.markdown("---")
         if st.button("🗑️ Clear entire index", key="btn_clear_index"):
             try:
-                rd = httpx.delete(f"{API_URL}/index", headers=api_headers(), timeout=30.0)
+                rd = api_delete("/index")
                 rd.raise_for_status()
                 st.session_state.pdf_page = 0
                 st.success("Index cleared!")
@@ -448,7 +468,7 @@ with tab4:
                 data = {"top_k": str(scan_top_k), "threshold": str(scan_threshold)}
 
                 try:
-                    r = httpx.post(f"{API_URL}/scan", files=files, data=data, headers=api_headers(), timeout=TIMEOUT * 3)
+                    r = api_post("/scan", files=files, data=data, timeout=TIMEOUT * 3)
                     r.raise_for_status()
                     result = r.json()
                 except Exception as e:
