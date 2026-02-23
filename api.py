@@ -472,6 +472,7 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                             "bbox": sub["bbox"],
                             "width": sub["width"],
                             "height": sub["height"],
+                            "segmented": True,
                         })
                 else:
                     # Segmentation found nothing — keep original full-page image
@@ -484,6 +485,7 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                         "bbox": bbox,
                         "width": pil_img.width,
                         "height": pil_img.height,
+                        "segmented": False,
                     })
             else:
                 results.append({
@@ -494,6 +496,7 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                     "bbox": bbox,
                     "width": pil_img.width,
                     "height": pil_img.height,
+                    "segmented": False,
                 })
 
     # Fallback for scanned PDFs: render pages as images
@@ -520,6 +523,7 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                         "bbox": sub["bbox"],
                         "width": sub["width"],
                         "height": sub["height"],
+                        "segmented": True,
                     })
             else:
                 # No sub-images found — keep full page as before
@@ -531,14 +535,28 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                     "bbox": page.rect,
                     "width": pil_img.width,
                     "height": pil_img.height,
+                    "segmented": False,
                 })
 
     doc.close()
+
+    # Mark images on dense pages (3+ images) as needing tight VLM zones
+    from collections import Counter
+    page_counts = Counter(r["page"] for r in results)
+    for r in results:
+        if page_counts[r["page"]] >= 3:
+            r["segmented"] = True
+
     return results
 
 
-def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox) -> Image.Image:
-    """Render the zone around an image bbox on a PDF page with generous margins."""
+def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox, tight: bool = False) -> Image.Image:
+    """Render the zone around an image bbox on a PDF page.
+
+    Args:
+        tight: Use reduced margins for segmented sub-images (avoids capturing
+               neighbouring artworks on dense catalog pages).
+    """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc[page_idx]
     page_rect = page.rect
@@ -561,17 +579,40 @@ def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox) -> Image.Image:
 
     bw = bbox.width
     bh = bbox.height
-    margin = max(bw, bh) * 0.5
 
+    if tight:
+        # Tight margins for dense catalog pages: full row width, minimal vertical
+        v_margin = max(bw, bh) * 0.3
+        clip_rect = fitz.Rect(
+            max(0, bbox.x0 - bw * 0.2),             # left: minimal
+            bbox.y0 - v_margin,                       # above: tight
+            page_rect.width * 0.95,                   # right: full row width
+            bbox.y1 + v_margin,                       # below: tight
+        )
+    else:
+        # Generous margins for single-artwork pages
+        margin = max(bw, bh) * 0.5
+        clip_rect = fitz.Rect(
+            max(0, bbox.x0 - margin * 1),            # left: 1x
+            bbox.y0 - margin * 2,                     # above: 2x
+            bbox.x1 + margin * 4,                     # right: 4x
+            bbox.y1 + margin * 3,                     # below: 3x
+        )
+
+    # If bbox is entirely beyond the page rect, rendering will be blank.
+    # Return None so the caller can fall back to using the artwork image.
+    if bbox.y0 >= page_rect.y1 or bbox.x0 >= page_rect.x1:
+        doc.close()
+        return None
+
+    # Clamp coordinates to page bounds
     clip_rect = fitz.Rect(
-        max(page_rect.x0, bbox.x0 - margin * 1),       # left: 1x
-        max(page_rect.y0, bbox.y0 - margin * 2),       # above: 2x
-        min(page_rect.x1, bbox.x1 + margin * 4),       # right: 4x
-        min(page_rect.y1, bbox.y1 + margin * 3),       # below: 3x
+        max(page_rect.x0, clip_rect.x0),
+        max(page_rect.y0, clip_rect.y0),
+        min(page_rect.x1, clip_rect.x1),
+        min(page_rect.y1, clip_rect.y1),
     )
 
-    # Ensure clip_rect is valid
-    clip_rect = clip_rect & page_rect  # intersect with page bounds
     if clip_rect.is_empty or clip_rect.width < 1 or clip_rect.height < 1:
         clip_rect = page_rect
 
@@ -806,6 +847,7 @@ async def match(
                 "verdict": score_verdict(combo),
                 "page": pdf_img_info["page"],
                 "bbox": pdf_img_info["bbox"],
+                "segmented": pdf_img_info.get("segmented", False),
                 "pdf_image": pdf_img,
                 "size_vs_ref": {
                     "ref": f"{ref_img.width}x{ref_img.height}",
@@ -826,13 +868,19 @@ async def match(
     t_vlm_start = time.time()
     for m in matches:
         if m["bbox"] is not None:
-            zone_img = render_page_zone(pdf_bytes, m["page"], m["bbox"])
-            m["zone_b64"] = image_to_b64(zone_img)
-            try:
-                m["description"] = await call_vlm(zone_img)
-            except Exception as e:
-                logger.error(f"VLM call failed: {e}")
-                m["description"] = {"error": str(e)}
+            zone_img = render_page_zone(pdf_bytes, m["page"], m["bbox"], tight=m.get("segmented", False))
+            if zone_img is None:
+                zone_img = m.get("pdf_image")  # Fallback for off-page images
+            if zone_img is not None:
+                m["zone_b64"] = image_to_b64(zone_img)
+                try:
+                    m["description"] = await call_vlm(zone_img)
+                except Exception as e:
+                    logger.error(f"VLM call failed: {e}")
+                    m["description"] = {"error": str(e)}
+            else:
+                m["zone_b64"] = None
+                m["description"] = {"error": "no zone available"}
         else:
             m["description"] = {"error": "no bounding box available"}
             m["zone_b64"] = None
@@ -991,6 +1039,7 @@ async def match_batch(
                     "verdict": score_verdict(combo),
                     "page": pdf_img_info["page"],
                     "bbox": pdf_img_info["bbox"],
+                    "segmented": pdf_img_info.get("segmented", False),
                     "size_vs_ref": {
                         "ref": f"{ref_img.width}x{ref_img.height}",
                         "pdf": f"{pdf_img_info['width']}x{pdf_img_info['height']}",
@@ -1002,12 +1051,22 @@ async def match_batch(
         if best_match and best_match["combined_score"] >= threshold:
             entry["matched"] = True
             if best_match["bbox"] is not None:
-                zone_img = render_page_zone(pdf_bytes, best_match["page"], best_match["bbox"])
-                best_match["zone_b64"] = image_to_b64(zone_img)
-                try:
-                    best_match["description"] = await call_vlm(zone_img)
-                except Exception as e:
-                    best_match["description"] = {"error": str(e)}
+                zone_img = render_page_zone(pdf_bytes, best_match["page"], best_match["bbox"], tight=best_match.get("segmented", False))
+                if zone_img is None:
+                    # Off-page image: find artwork for VLM fallback
+                    for pi in pdf_images:
+                        if pi["page"] == best_match["page"] and pi["bbox"] == best_match["bbox"]:
+                            zone_img = pi["image"]
+                            break
+                if zone_img is not None:
+                    best_match["zone_b64"] = image_to_b64(zone_img)
+                    try:
+                        best_match["description"] = await call_vlm(zone_img)
+                    except Exception as e:
+                        best_match["description"] = {"error": str(e)}
+                else:
+                    best_match["description"] = {"error": "no zone available"}
+                    best_match["zone_b64"] = None
             else:
                 best_match["description"] = {"error": "no bounding box"}
                 best_match["zone_b64"] = None
@@ -1043,7 +1102,9 @@ async def extract(pdf: UploadFile = File(...)):
         }
 
         if pdf_img_info["bbox"] is not None:
-            zone_img = render_page_zone(pdf_bytes, pdf_img_info["page"], pdf_img_info["bbox"])
+            zone_img = render_page_zone(pdf_bytes, pdf_img_info["page"], pdf_img_info["bbox"], tight=pdf_img_info.get("segmented", False))
+            if zone_img is None:
+                zone_img = pdf_img_info["image"]  # Fallback for off-page images
             entry["zone_b64"] = image_to_b64(zone_img)
             try:
                 entry["description"] = await call_vlm(zone_img)
@@ -1143,7 +1204,9 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
             zone_b64 = None
             if bbox is not None:
                 try:
-                    zone_img = render_page_zone(pdf_bytes, img_info["page"], bbox)
+                    zone_img = render_page_zone(pdf_bytes, img_info["page"], bbox, tight=img_info.get("segmented", False))
+                    if zone_img is None:
+                        zone_img = pil_img  # Fallback: use artwork itself for off-page images
                     zone_b64 = image_to_b64(zone_img)
                     description = await call_vlm(zone_img)
                     logger.info(f"  VLM extracted description for image {img_idx + 1}/{len(pdf_images)} in {pdf_filename}")
