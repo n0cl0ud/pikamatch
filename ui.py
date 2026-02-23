@@ -32,42 +32,24 @@ def api_headers() -> dict:
 # ============================================================
 
 @st.cache_data(ttl=30, show_spinner=False)
-def fetch_health() -> tuple[dict | None, str]:
-    """Fetch health status, cached for 30s. Returns (data, error_msg)."""
-    try:
-        r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=15.0)
-        r.raise_for_status()
-        return r.json(), ""
-    except httpx.ConnectError as e:
-        return None, f"Connection refused: {API_URL} — {e}"
-    except httpx.TimeoutException:
-        return None, f"Timeout connecting to {API_URL}"
-    except httpx.HTTPStatusError as e:
-        return None, f"HTTP {e.response.status_code}: {e.response.text[:200]}"
-    except Exception as e:
-        return None, f"{type(e).__name__}: {e}"
+def fetch_health() -> dict:
+    """Fetch health status, cached for 30s. Errors are NOT cached (exceptions bypass cache)."""
+    r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=30.0)
+    r.raise_for_status()
+    return r.json()
 
 
 @st.cache_data(ttl=15, show_spinner=False)
-def fetch_index_status(limit: int, offset: int) -> tuple[dict | None, str]:
-    """Fetch index status with pagination, cached for 15s. Returns (data, error_msg)."""
-    try:
-        r = httpx.get(
-            f"{API_URL}/index/status",
-            params={"limit": limit, "offset": offset},
-            headers=api_headers(),
-            timeout=15.0,
-        )
-        r.raise_for_status()
-        return r.json(), ""
-    except httpx.ConnectError as e:
-        return None, f"Connection refused: {API_URL} — {e}"
-    except httpx.TimeoutException:
-        return None, f"Timeout connecting to {API_URL}"
-    except httpx.HTTPStatusError as e:
-        return None, f"HTTP {e.response.status_code}: {e.response.text[:200]}"
-    except Exception as e:
-        return None, f"{type(e).__name__}: {e}"
+def fetch_index_status(limit: int, offset: int) -> dict:
+    """Fetch index status with pagination, cached for 15s. Errors are NOT cached."""
+    r = httpx.get(
+        f"{API_URL}/index/status",
+        params={"limit": limit, "offset": offset},
+        headers=api_headers(),
+        timeout=30.0,
+    )
+    r.raise_for_status()
+    return r.json()
 
 
 # ============================================================
@@ -76,8 +58,8 @@ def fetch_index_status(limit: int, offset: int) -> tuple[dict | None, str]:
 
 with st.sidebar:
     st.header("Status")
-    health, health_err = fetch_health()
-    if health:
+    try:
+        health = fetch_health()
         clip_status = health.get("clip", "unknown")
         vlm_status = health.get("vlm", "unknown")
         qdrant_status = health.get("qdrant", "unknown")
@@ -89,12 +71,9 @@ with st.sidebar:
         if health.get("vram"):
             vram = health["vram"]
             st.metric("VRAM", f"{vram.get('allocated_mb', '?')} / {vram.get('total_mb', '?')} MB")
-    else:
-        st.warning(f"API: {health_err}")
-        st.caption(f"Target: {API_URL}")
-        if st.button("🔄 Retry", key="btn_retry_health"):
-            fetch_health.clear()
-            st.rerun()
+    except Exception as e:
+        st.warning(f"API: {type(e).__name__}")
+        st.caption(f"{API_URL} — {e}")
 
     st.divider()
     st.header("Score Guide")
@@ -397,16 +376,15 @@ with tab4:
         st.session_state.pdf_page = 0
 
     current_offset = st.session_state.pdf_page * PAGE_SIZE
-    status, index_err = fetch_index_status(PAGE_SIZE, current_offset)
+    try:
+        status = fetch_index_status(PAGE_SIZE, current_offset)
+    except Exception as e:
+        status = None
+        st.warning(f"Could not fetch index status: {e}")
 
-    if status is None:
-        st.warning(f"Could not fetch index status: {index_err}")
-        if st.button("🔄 Retry", key="btn_retry_index"):
-            fetch_index_status.clear()
-            st.rerun()
-    elif status.get("total_vectors", 0) == 0:
+    if status is not None and status.get("total_vectors", 0) == 0:
         st.info("No PDFs indexed yet. Upload PDFs above to get started.")
-    else:
+    elif status is not None:
         col_m1, col_m2 = st.columns(2)
         col_m1.metric("Total vectors", status.get("total_vectors", 0))
         col_m2.metric("Total PDFs", status.get("total_pdfs", 0))
