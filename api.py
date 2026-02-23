@@ -1270,19 +1270,19 @@ async def scan(
 
 
 @app.get("/index/status", dependencies=[Depends(verify_api_key)])
-async def index_status():
-    """Return status of indexed PDFs."""
+async def index_status(limit: int = 25, offset: int = 0):
+    """Return status of indexed PDFs with pagination (default 25 per page)."""
     collection = qdrant.get_collection(QDRANT_COLLECTION)
     total_vectors = collection.points_count
 
     # Get unique PDF filenames by scrolling points
     pdf_counts: dict[str, int] = {}
-    offset = None
+    scroll_offset = None
     while True:
         scroll_result = qdrant.scroll(
             collection_name=QDRANT_COLLECTION,
             limit=100,
-            offset=offset,
+            offset=scroll_offset,
             with_payload=["pdf_filename"],
             with_vectors=False,
         )
@@ -1292,14 +1292,20 @@ async def index_status():
             pdf_counts[pdf_name] = pdf_counts.get(pdf_name, 0) + 1
         if next_offset is None:
             break
-        offset = next_offset
+        scroll_offset = next_offset
 
-    pdfs = [{"pdf": name, "images": count} for name, count in sorted(pdf_counts.items())]
+    all_pdfs = sorted(pdf_counts.items())
+    total_pdfs = len(all_pdfs)
+    page_pdfs = all_pdfs[offset:offset + limit]
+    pdfs = [{"pdf": name, "images": count} for name, count in page_pdfs]
 
     return {
         "total_vectors": total_vectors,
-        "total_pdfs": len(pdfs),
+        "total_pdfs": total_pdfs,
         "pdfs": pdfs,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + limit < total_pdfs,
     }
 
 

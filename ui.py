@@ -34,20 +34,26 @@ def api_headers() -> dict:
 with st.sidebar:
     st.header("Status")
     try:
-        r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=5.0)
+        r = httpx.get(f"{API_URL}/health", headers=api_headers(), timeout=10.0)
+        r.raise_for_status()
         health = r.json()
         clip_status = health.get("clip", "unknown")
         vlm_status = health.get("vlm", "unknown")
         qdrant_status = health.get("qdrant", "unknown")
-        qdrant_vectors = health.get("qdrant_vectors", 0)
+        qdrant_vectors = health.get("qdrant_vectors")
         st.metric("CLIP", clip_status)
         st.metric("VLM (Qwen2.5-VL)", vlm_status)
-        st.metric("Qdrant", f"{qdrant_status} ({qdrant_vectors} vectors)")
+        qdrant_label = f"{qdrant_status} ({qdrant_vectors} vectors)" if qdrant_vectors is not None else qdrant_status
+        st.metric("Qdrant", qdrant_label)
         if health.get("vram"):
             vram = health["vram"]
             st.metric("VRAM", f"{vram.get('allocated_mb', '?')} / {vram.get('total_mb', '?')} MB")
-    except Exception:
-        st.error("API non disponible")
+    except httpx.ConnectError:
+        st.error("API non disponible — clip-api n'est pas joignable")
+    except httpx.TimeoutException:
+        st.warning("API lente — timeout sur le health check")
+    except Exception as e:
+        st.error(f"API erreur: {e}")
 
     st.divider()
     st.header("Score Guide")
@@ -342,15 +348,28 @@ with tab4:
     # Show currently indexed PDFs
     st.markdown("---")
     st.markdown("**Currently indexed PDFs:**")
+
+    PAGE_SIZE = 25
+    if "pdf_page" not in st.session_state:
+        st.session_state.pdf_page = 0
+
     try:
-        r = httpx.get(f"{API_URL}/index/status", headers=api_headers(), timeout=10.0)
+        current_offset = st.session_state.pdf_page * PAGE_SIZE
+        r = httpx.get(
+            f"{API_URL}/index/status",
+            params={"limit": PAGE_SIZE, "offset": current_offset},
+            headers=api_headers(),
+            timeout=10.0,
+        )
         r.raise_for_status()
         status = r.json()
 
         if status.get("total_vectors", 0) == 0:
             st.info("No PDFs indexed yet. Upload PDFs above to get started.")
         else:
-            st.metric("Total vectors", status.get("total_vectors", 0))
+            col_m1, col_m2 = st.columns(2)
+            col_m1.metric("Total vectors", status.get("total_vectors", 0))
+            col_m2.metric("Total PDFs", status.get("total_pdfs", 0))
 
             for item in status.get("pdfs", []):
                 col_name, col_count, col_del = st.columns([4, 1, 1])
@@ -365,10 +384,26 @@ with tab4:
                     except Exception as e:
                         st.error(f"Delete error: {e}")
 
+            # Pagination controls
+            total_pdfs = status.get("total_pdfs", 0)
+            total_pages = max(1, (total_pdfs + PAGE_SIZE - 1) // PAGE_SIZE)
+            if total_pages > 1:
+                st.markdown("---")
+                col_prev, col_info, col_next = st.columns([1, 2, 1])
+                col_info.markdown(f"**Page {st.session_state.pdf_page + 1} / {total_pages}** ({total_pdfs} PDFs)")
+                if col_prev.button("⬅️ Previous", key="btn_prev_page", disabled=(st.session_state.pdf_page == 0)):
+                    st.session_state.pdf_page -= 1
+                    st.rerun()
+                if col_next.button("Next ➡️", key="btn_next_page", disabled=(not status.get("has_more", False))):
+                    st.session_state.pdf_page += 1
+                    st.rerun()
+
+            st.markdown("---")
             if st.button("🗑️ Clear entire index", key="btn_clear_index"):
                 try:
                     rd = httpx.delete(f"{API_URL}/index", headers=api_headers(), timeout=10.0)
                     rd.raise_for_status()
+                    st.session_state.pdf_page = 0
                     st.success("Index cleared!")
                     st.rerun()
                 except Exception as e:
