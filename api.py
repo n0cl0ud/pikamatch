@@ -599,11 +599,45 @@ def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox, tight: bool = False)
             bbox.y1 + margin * 3,                     # below: 3x
         )
 
-    # If bbox is entirely beyond the page rect, rendering will be blank.
-    # Return None so the caller can fall back to using the artwork image.
-    if bbox.y0 >= page_rect.y1 or bbox.x0 >= page_rect.x1:
-        doc.close()
-        return None
+    # If bbox is beyond the page rect, search other pages for where this image
+    # is actually visible (some PDFs repeat the same images across pages at
+    # different offsets — only one page has the image within viewable bounds).
+    if bbox.y0 >= page_rect.y1 or bbox.y1 <= page_rect.y0 or bbox.x0 >= page_rect.x1:
+        found = False
+        for alt_idx in range(len(doc)):
+            if alt_idx == page_idx:
+                continue
+            alt_page = doc[alt_idx]
+            for img_info in alt_page.get_images(full=True):
+                alt_bbox = alt_page.get_image_bbox(img_info)
+                # Same xref or same dimensions at a valid position
+                if (alt_bbox.width > 1 and alt_bbox.height > 1
+                        and alt_bbox.y0 >= 0 and alt_bbox.y1 <= alt_page.rect.y1
+                        and abs(alt_bbox.width - bbox.width) < 2
+                        and abs(alt_bbox.height - bbox.height) < 2):
+                    # Found the visible instance — switch to this page
+                    page = alt_page
+                    page_rect = alt_page.rect
+                    page_idx = alt_idx
+                    bbox = alt_bbox
+                    bw = bbox.width
+                    bh = bbox.height
+                    # Recompute clip_rect with tight margins (multi-page catalogs are dense)
+                    v_margin = max(bw, bh) * 0.3
+                    clip_rect = fitz.Rect(
+                        max(0, bbox.x0 - bw * 0.2),
+                        bbox.y0 - v_margin,
+                        page_rect.width * 0.95,
+                        bbox.y1 + v_margin,
+                    )
+                    found = True
+                    logger.debug(f"Off-page image relocated to page {alt_idx} bbox={bbox}")
+                    break
+            if found:
+                break
+        if not found:
+            doc.close()
+            return None
 
     # Clamp coordinates to page bounds
     clip_rect = fitz.Rect(
