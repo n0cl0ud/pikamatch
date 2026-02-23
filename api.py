@@ -77,7 +77,7 @@ Extrais les champs suivants au format JSON. Mets null pour les champs absents :
   "taille": "dimensions (ex: 300x225 px)",
   "origine": "source/fournisseur",
   "reference": "code ou référence",
-  "format": "format fichier (JPEG, PNG, etc.)",
+  "medium": "technique/matériau (oil on canvas, acrylic, etc.)",
   "couleur": "couleur dominante ou palette",
   "categorie": "catégorie/type d'image",
   "date": "date associée",

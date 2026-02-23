@@ -173,7 +173,7 @@ def display_description(desc: dict):
         ("Taille", "taille"),
         ("Origine", "origine"),
         ("Référence", "reference"),
-        ("Format", "format"),
+        ("Medium", "medium"),
         ("Couleur", "couleur"),
         ("Catégorie", "categorie"),
         ("Date", "date"),

@@ -50,7 +50,7 @@ DESC_FIELDS = [
     ("taille", "Taille"),
     ("origine", "Origine"),
     ("reference", "Reference"),
-    ("format", "Format"),
+    ("medium", "Medium"),
     ("couleur", "Couleur"),
     ("categorie", "Categorie"),
     ("statut", "Statut"),
