@@ -1275,13 +1275,13 @@ async def index_status(limit: int = 25, offset: int = 0):
     collection = qdrant.get_collection(QDRANT_COLLECTION)
     total_vectors = collection.points_count
 
-    # Get unique PDF filenames by scrolling points
+    # Get unique PDF filenames by scrolling points (large batch to minimize round-trips)
     pdf_counts: dict[str, int] = {}
     scroll_offset = None
     while True:
         scroll_result = qdrant.scroll(
             collection_name=QDRANT_COLLECTION,
-            limit=100,
+            limit=10000,
             offset=scroll_offset,
             with_payload=["pdf_filename"],
             with_vectors=False,
