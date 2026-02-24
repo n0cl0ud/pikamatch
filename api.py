@@ -35,6 +35,7 @@ logger = logging.getLogger("pikamatch")
 # --- Config ---
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 VLM_URL = os.getenv("VLM_URL", "http://qwen-vl:8000")
+VLM_MODEL = os.getenv("VLM_MODEL", "")  # Auto-detected at startup if empty
 QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
 QDRANT_COLLECTION = "pdf_images"
 CLIP_DIM = 768  # CLIP ViT-L/14 embedding dimension
@@ -94,6 +95,21 @@ logger.info(f"Loading CLIP ViT-L/14 on {DEVICE}...")
 clip_model, clip_preprocess = clip.load("ViT-L/14", device=DEVICE)
 clip_model.eval()
 logger.info("CLIP model loaded.")
+
+# --- Auto-detect VLM model name ---
+if not VLM_MODEL:
+    try:
+        r = httpx.get(f"{VLM_URL}/v1/models", timeout=10.0)
+        models = r.json().get("data", [])
+        if models:
+            VLM_MODEL = models[0]["id"]
+            logger.info(f"Auto-detected VLM model: {VLM_MODEL}")
+        else:
+            VLM_MODEL = "default"
+            logger.warning("No VLM models found, using 'default'.")
+    except Exception as e:
+        VLM_MODEL = "default"
+        logger.warning(f"Could not auto-detect VLM model: {e}")
 
 # --- Qdrant setup ---
 os.makedirs(INDEXED_PDFS_DIR, exist_ok=True)
@@ -687,10 +703,10 @@ def parse_vlm_json(text: str) -> dict:
 
 
 async def call_vlm(zone_img: Image.Image) -> dict:
-    """Send a page zone screenshot to Qwen2.5-VL and extract description fields."""
+    """Send a page zone screenshot to the VLM and extract description fields."""
     b64 = image_to_b64(zone_img)
     payload = {
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
+        "model": VLM_MODEL,
         "messages": [
             {
                 "role": "user",
