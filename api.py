@@ -35,6 +35,7 @@ logger = logging.getLogger("pikamatch")
 # --- Config ---
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 VLM_URL = os.getenv("VLM_URL", "http://qwen-vl:8000")
+VLM_MODEL = os.getenv("VLM_MODEL", "")  # Auto-detected at startup if empty
 QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
 QDRANT_COLLECTION = "pdf_images"
 CLIP_DIM = 768  # CLIP ViT-L/14 embedding dimension
@@ -87,6 +88,8 @@ Extrais les champs suivants au format JSON. Mets null pour les champs absents :
   "autres": "autres informations pertinentes"
 }
 
+Si aucun texte ou métadonnée n'est visible autour de l'image, décris visuellement l'oeuvre dans le champ "description" : sujet, style, couleurs dominantes, composition, technique apparente.
+
 Réponds UNIQUEMENT avec le JSON, sans texte avant ou après."""
 
 # --- Load CLIP model at startup ---
@@ -94,6 +97,21 @@ logger.info(f"Loading CLIP ViT-L/14 on {DEVICE}...")
 clip_model, clip_preprocess = clip.load("ViT-L/14", device=DEVICE)
 clip_model.eval()
 logger.info("CLIP model loaded.")
+
+# --- Auto-detect VLM model name ---
+if not VLM_MODEL:
+    try:
+        r = httpx.get(f"{VLM_URL}/v1/models", timeout=10.0)
+        models = r.json().get("data", [])
+        if models:
+            VLM_MODEL = models[0]["id"]
+            logger.info(f"Auto-detected VLM model: {VLM_MODEL}")
+        else:
+            VLM_MODEL = "default"
+            logger.warning("No VLM models found, using 'default'.")
+    except Exception as e:
+        VLM_MODEL = "default"
+        logger.warning(f"Could not auto-detect VLM model: {e}")
 
 # --- Qdrant setup ---
 os.makedirs(INDEXED_PDFS_DIR, exist_ok=True)
@@ -178,6 +196,42 @@ def embed_image(img: Image.Image) -> np.ndarray:
         features = clip_model.encode_image(tensor)
     features = features / features.norm(dim=-1, keepdim=True)
     return features.cpu().numpy().flatten()
+
+
+QUERY_TARGETS = [96, 224, 512, 1024]
+
+
+def normalize_image(img: Image.Image) -> Image.Image:
+    """Apply CLAHE normalization in LAB space for color/exposure invariance."""
+    arr = np.array(img.convert("RGB"))
+    lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+    rgb = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+    return Image.fromarray(rgb)
+
+
+def embed_image_robust(img: Image.Image) -> np.ndarray:
+    """Multi-scale CLIP embedding with CLAHE normalization for query images.
+
+    Embeds the image at multiple absolute sizes (96, 224, 512, 1024px longest
+    side) to cover the full range of indexed image resolutions. This makes the
+    query embedding match both small thumbnails and large scans equally well.
+    """
+    img = normalize_image(img)
+    w, h = img.size
+    longest = max(w, h)
+    embeddings = []
+    for target in QUERY_TARGETS:
+        scale = target / longest
+        sw, sh = max(1, int(w * scale)), max(1, int(h * scale))
+        scaled = img.resize((sw, sh), Image.LANCZOS)
+        embeddings.append(embed_image(scaled))
+    avg = np.mean(embeddings, axis=0)
+    norm = np.linalg.norm(avg)
+    if norm > 0:
+        avg = avg / norm
+    return avg
 
 
 def is_grayscale(img: Image.Image) -> bool:
@@ -337,11 +391,16 @@ def segment_page_image(page_pil: Image.Image, page_rect, render_dpi: int = RENDE
     merged = _merge_overlapping_rects(raw_rects)
 
     # Convert pixel coords → PDF coords and crop sub-images
-    scale = 72.0 / render_dpi  # pixel coords → PDF points
+    # Use actual page-to-image ratio (handles both rendered pages and embedded images
+    # whose native resolution may differ from render_dpi)
     if isinstance(page_rect, fitz.Rect):
         pdf_x0, pdf_y0 = page_rect.x0, page_rect.y0
+        scale_x = page_rect.width / img_w
+        scale_y = page_rect.height / img_h
     else:
         pdf_x0, pdf_y0 = 0.0, 0.0
+        scale_x = 72.0 / render_dpi
+        scale_y = scale_x
 
     sub_images = []
     for (x, y, w, h) in merged:
@@ -350,10 +409,10 @@ def segment_page_image(page_pil: Image.Image, page_rect, render_dpi: int = RENDE
 
         # Convert pixel bbox to PDF coordinate bbox
         pdf_bbox = fitz.Rect(
-            pdf_x0 + x * scale,
-            pdf_y0 + y * scale,
-            pdf_x0 + (x + w) * scale,
-            pdf_y0 + (y + h) * scale,
+            pdf_x0 + x * scale_x,
+            pdf_y0 + y * scale_y,
+            pdf_x0 + (x + w) * scale_x,
+            pdf_y0 + (y + h) * scale_y,
         )
 
         sub_images.append({
@@ -583,14 +642,26 @@ def render_page_zone(pdf_bytes: bytes, page_idx: int, bbox, tight: bool = False,
     bh = bbox.height
 
     if tight:
-        # Tight margins for dense catalog pages: full row width, minimal vertical
+        # Tight margins for segmented sub-images
         v_margin = max(bw, bh) * 0.3
-        clip_rect = fitz.Rect(
-            max(0, bbox.x0 - bw * 0.2),             # left: minimal
-            bbox.y0 - v_margin,                       # above: tight
-            page_rect.width * 0.95,                   # right: full row width
-            bbox.y1 + v_margin,                       # below: tight
-        )
+        page_has_text = len(page.get_text().strip()) > 10
+        if page_has_text:
+            # Catalog with text descriptions — extend right to capture text
+            clip_rect = fitz.Rect(
+                max(0, bbox.x0 - bw * 0.2),
+                bbox.y0 - v_margin,
+                page_rect.width * 0.95,
+                bbox.y1 + v_margin,
+            )
+        else:
+            # Pure scan (no text) — symmetric centered margins
+            h_margin = max(bw, bh) * 0.3
+            clip_rect = fitz.Rect(
+                bbox.x0 - h_margin,
+                bbox.y0 - v_margin,
+                bbox.x1 + h_margin,
+                bbox.y1 + v_margin,
+            )
     else:
         # Generous margins for single-artwork pages
         margin = max(bw, bh) * 0.5
@@ -687,10 +758,10 @@ def parse_vlm_json(text: str) -> dict:
 
 
 async def call_vlm(zone_img: Image.Image) -> dict:
-    """Send a page zone screenshot to Qwen2.5-VL and extract description fields."""
+    """Send a page zone screenshot to the VLM and extract description fields."""
     b64 = image_to_b64(zone_img)
     payload = {
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
+        "model": VLM_MODEL,
         "messages": [
             {
                 "role": "user",
@@ -776,7 +847,7 @@ async def match(
     jpg_bytes = await validate_upload_size(jpg, "image")
     pdf_bytes = await validate_upload_size(pdf, "PDF")
     ref_img = Image.open(io.BytesIO(jpg_bytes)).convert("RGB")
-    ref_embedding = embed_image(ref_img)
+    ref_embedding = embed_image_robust(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
     ref_grayscale = is_grayscale(ref_img)
     pdf_filename = pdf.filename or "unknown.pdf"
@@ -997,7 +1068,7 @@ async def match_batch(
         for img_file in images:
             img_bytes = await img_file.read()
             ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-            ref_embedding = embed_image(ref_img)
+            ref_embedding = embed_image_robust(ref_img)
             ref_phash_hex = compute_phash_hex(ref_img)
             ref_grayscale = is_grayscale(ref_img)
 
@@ -1060,7 +1131,7 @@ async def match_batch(
     for img_file in images:
         img_bytes = await img_file.read()
         ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        ref_embedding = embed_image(ref_img)
+        ref_embedding = embed_image_robust(ref_img)
 
         best_match = None
         best_score = -1.0
@@ -1181,23 +1252,33 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
         pdf_filename = pdf_file.filename or "unknown.pdf"
 
         # Check if already indexed — skip unless force
-        if not force:
-            try:
-                scroll_result = qdrant.scroll(
-                    collection_name=QDRANT_COLLECTION,
-                    scroll_filter=Filter(
-                        must=[FieldCondition(key="pdf_filename", match=MatchValue(value=pdf_filename))]
-                    ),
-                    limit=1,
-                    with_payload=False,
-                    with_vectors=False,
-                )
-                if len(scroll_result[0]) > 0:
-                    logger.info(f"Skipping '{pdf_filename}' — already indexed")
-                    skipped.append(pdf_filename)
-                    continue
-            except Exception:
-                pass
+        try:
+            scroll_result = qdrant.scroll(
+                collection_name=QDRANT_COLLECTION,
+                scroll_filter=Filter(
+                    must=[FieldCondition(key="pdf_filename", match=MatchValue(value=pdf_filename))]
+                ),
+                limit=1,
+                with_payload=False,
+                with_vectors=False,
+            )
+            already_indexed = len(scroll_result[0]) > 0
+        except Exception:
+            already_indexed = False
+
+        if already_indexed and not force:
+            logger.info(f"Skipping '{pdf_filename}' — already indexed")
+            skipped.append(pdf_filename)
+            continue
+
+        if already_indexed and force:
+            qdrant.delete(
+                collection_name=QDRANT_COLLECTION,
+                points_selector=Filter(
+                    must=[FieldCondition(key="pdf_filename", match=MatchValue(value=pdf_filename))]
+                ),
+            )
+            logger.info(f"Deleted old index entries for '{pdf_filename}' (force re-index)")
 
         # Skip empty/corrupted PDFs
         if not pdf_bytes or len(pdf_bytes) < 100:
@@ -1308,7 +1389,7 @@ async def scan(
     # Embed query image
     img_bytes = await validate_upload_size(image, "image")
     ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    ref_embedding = embed_image(ref_img)
+    ref_embedding = embed_image_robust(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
     ref_grayscale = is_grayscale(ref_img)
 
