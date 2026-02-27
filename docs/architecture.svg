@@ -212,14 +212,14 @@
   </g>
   <text x="480" y="327" fill="#22d3ee" font-size="14" font-weight="700">qwen-vl</text>
   <text x="480" y="342" fill="#94a3b8" font-size="10">Vision Language Model</text>
-  <text x="440" y="368" fill="#cbd5e1" font-size="11">vLLM + Qwen2.5-VL-7B-AWQ</text>
-  <text x="440" y="385" fill="#64748b" font-size="10">~5 GB VRAM</text>
+  <text x="440" y="368" fill="#cbd5e1" font-size="11">vLLM + Qwen3-VL-8B-FP8</text>
+  <text x="440" y="385" fill="#64748b" font-size="10">~10 GB VRAM</text>
   <rect x="440" y="398" width="100" height="18" rx="4" ry="4" fill="#22d3ee" opacity="0.12"/>
   <text x="490" y="411" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="600">:8000 -> :8001</text>
 
   <!-- VRAM total badge -->
   <rect x="265" y="448" width="190" height="22" rx="6" ry="6" fill="#0a0e1a" stroke="#1e3a5f" stroke-width="0.8"/>
-  <text x="360" y="463" text-anchor="middle" fill="#64748b" font-size="9" font-weight="600" letter-spacing="1">TOTAL ~6.5 GB / 16 GB VRAM</text>
+  <text x="360" y="463" text-anchor="middle" fill="#64748b" font-size="9" font-weight="600" letter-spacing="1">TOTAL ~11.5 GB / 16 GB VRAM</text>
 
   <!-- ============================================================ -->
   <!-- CPU SERVICES SUB-CONTAINER                                    -->
@@ -402,7 +402,7 @@
   <text x="485" y="783" text-anchor="middle" fill="#22d3ee" font-size="8" font-weight="600">vLLM</text>
 
   <rect x="520" y="770" width="55" height="18" rx="4" fill="#22d3ee" opacity="0.12"/>
-  <text x="547.5" y="783" text-anchor="middle" fill="#22d3ee" font-size="8" font-weight="600">Qwen2.5</text>
+  <text x="547.5" y="783" text-anchor="middle" fill="#22d3ee" font-size="8" font-weight="600">Qwen3-VL</text>
 
   <rect x="585" y="770" width="55" height="18" rx="4" fill="#a78bfa" opacity="0.12"/>
   <text x="612.5" y="783" text-anchor="middle" fill="#a78bfa" font-size="8" font-weight="600">Qdrant</text>
@@ -460,7 +460,7 @@
   <!-- ============================================================ -->
   <line x1="80" y1="895" x2="1120" y2="895" stroke="#1e3a5f" stroke-width="0.8" opacity="0.4"/>
   <text x="600" y="915" text-anchor="middle" fill="#334155" font-size="9" letter-spacing="1">PIKAMATCH  &#8226;  Image Matching Pipeline  &#8226;  docker compose up --build</text>
-  <text x="600" y="932" text-anchor="middle" fill="#1e3a5f" font-size="8" letter-spacing="0.5">CLIP ViT-L/14 + pHash + Qwen2.5-VL-7B-AWQ  &#8226;  RTX 5080 16 GB VRAM</text>
+  <text x="600" y="932" text-anchor="middle" fill="#1e3a5f" font-size="8" letter-spacing="0.5">CLIP ViT-L/14 + pHash + Qwen3-VL-8B-FP8  &#8226;  RTX 5080 16 GB VRAM</text>
 
   <!-- Decorative corner accents -->
   <path d="M50,82 L50,75 Q50,70 55,70 L62,70" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.3"/>

@@ -138,7 +138,7 @@
 <g filter="url(#glowRed)">
   <rect x="228" y="125" width="165" height="65" rx="8" fill="url(#gradRed)" filter="url(#shadowSmall)"/>
   <text x="310" y="153" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">CLIP ViT-L/14</text>
-  <text x="310" y="172" text-anchor="middle" fill="#fff" font-size="10" font-weight="500" opacity="0.85">Embed (768-dim)</text>
+  <text x="310" y="172" text-anchor="middle" fill="#fff" font-size="10" font-weight="500" opacity="0.85">CLAHE + Multi-scale</text>
 </g>
 
 <!-- ============================================================ -->
@@ -312,6 +312,6 @@
 <!-- BOTTOM DECORATIVE LINE                                        -->
 <!-- ============================================================ -->
 <line x1="30" y1="680" x2="1370" y2="680" stroke="#1e3a5f" stroke-width="1" opacity="0.3"/>
-<text x="700" y="695" text-anchor="middle" fill="#334155" font-size="9" letter-spacing="2">PIKAMATCH SEARCH PIPELINE v2.0</text>
+<text x="700" y="695" text-anchor="middle" fill="#334155" font-size="9" letter-spacing="2">PIKAMATCH SEARCH PIPELINE v3.0</text>
 
 </svg>

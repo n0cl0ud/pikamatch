@@ -183,7 +183,7 @@
     <rect x="205" y="904" width="290" height="55" rx="8" fill="url(#gradGreen)" filter="url(#shadowSmall)"/>
   </g>
   <text x="350" y="926" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#fff">Crop + Convert</text>
-  <text x="350" y="947" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#d1fae5" opacity="0.9">px &#x2192; PDF coords (x 72 / dpi)</text>
+  <text x="350" y="947" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif" font-size="10" fill="#d1fae5" opacity="0.9">px &#x2192; PDF coords (page_w / img_w)</text>
 
   <!-- Arrow 10→11 -->
   <line x1="350" y1="959" x2="350" y2="980" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
