@@ -282,7 +282,7 @@
   <g filter="url(#glowCyan)">
     <rect x="920" y="636" width="280" height="60" rx="10" ry="10" fill="url(#cyanGrad)" filter="url(#dropShadow)"/>
   </g>
-  <text x="1060" y="660" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Qwen2.5-VL</text>
+  <text x="1060" y="660" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Qwen3-VL-8B</text>
   <text x="1060" y="680" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="10" font-weight="400">Extract Description (JSON)</text>
 
   <!-- ============================================================ -->
