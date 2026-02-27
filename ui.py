@@ -104,7 +104,7 @@ with st.sidebar:
         qdrant_status = health.get("qdrant", "unknown")
         qdrant_vectors = health.get("qdrant_vectors")
         st.metric("CLIP", clip_status)
-        st.metric("VLM (Qwen2.5-VL)", vlm_status)
+        st.metric("VLM (Qwen3-VL)", vlm_status)
         qdrant_label = f"{qdrant_status} ({qdrant_vectors} vectors)" if qdrant_vectors is not None else qdrant_status
         st.metric("Qdrant", qdrant_label)
         if health.get("vram"):
@@ -133,7 +133,7 @@ with st.sidebar:
 - Matching visuel rapide
 - Score = 60% CLIP + 40% pHash
 
-**Phase 2** — Qwen2.5-VL (~3-5s)
+**Phase 2** — Qwen3-VL (~3-5s)
 - Lecture de la zone PDF autour de l'image
 - Extraction des champs structurés
 """)
