@@ -10,6 +10,7 @@ Usage:
     python test_clip.py index /path/to/pdf/folder [FORMAT]        (recursive)
     python test_clip.py index-status [FORMAT]
     python test_clip.py scan photo.jpg [FORMAT] [--threshold 0.70] [--top_k 10]
+    python test_clip.py scan-pdf catalogue.pdf [FORMAT] [--threshold 0.70] [--top_k 5] [--tag TAG]
     python test_clip.py index-remove catalogue1.pdf
     python test_clip.py index-clear
 
@@ -218,6 +219,26 @@ def pretty_scan_result(result: dict):
     print()
 
 
+def pretty_scan_pdf_result(result: dict):
+    pdf_info = result.get("pdf", {})
+    timing = result.get("timing", {})
+    print_header("SCAN-PDF RESULT")
+    print(f"  PDF:      {pdf_info.get('filename')} ({pdf_info.get('images_extracted', '?')} images extracted)")
+    print(f"  Timing:   Extract {timing.get('extraction_ms', '?')}ms | Search {timing.get('search_ms', '?')}ms | Total {timing.get('total_ms', '?')}ms")
+    for entry in result.get("results", []):
+        src = entry.get("source", {})
+        matches = entry.get("matches", [])
+        count = entry.get("total_matches", len(matches))
+        print(f"\n  --- Image #{src.get('index', '?') + 1} (page {src.get('page', '?')}, {src.get('size', '?')}) --- {count} match(es) ---")
+        for i, m in enumerate(matches):
+            phash = m.get("phash", {})
+            label = "BEST" if i == 0 else f"#{i + 1:>2d}"
+            print(f"    {label} {m.get('pdf', '?'):30s} p{m.get('page', '?'):<3} | {score_bar(m.get('combined_score', 0))} {m.get('verdict', '?')}")
+        if not matches:
+            print("    (no matches)")
+    print()
+
+
 # ============================================================
 # CSV output
 # ============================================================
@@ -308,6 +329,42 @@ def csv_scan_result(result: dict):
     for m in result.get("results", []):
         row = match_to_row(m, ref, m.get("pdf", ""))
         writer.writerow(row)
+    print(buf.getvalue().strip())
+
+
+SCAN_PDF_CSV_COLUMNS = [
+    "source_page", "source_index", "source_size",
+    "match_pdf", "match_page", "combined_score", "clip_score",
+    "phash_similarity", "phash_distance", "verdict",
+] + [k for k, _ in DESC_FIELDS]
+
+
+def csv_scan_pdf_result(result: dict):
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=SCAN_PDF_CSV_COLUMNS, delimiter=";")
+    writer.writeheader()
+    for entry in result.get("results", []):
+        src = entry.get("source", {})
+        for m in entry.get("matches", []):
+            ph = m.get("phash", {})
+            desc = m.get("description", {})
+            if not isinstance(desc, dict) or "error" in desc:
+                desc = {}
+            row = {
+                "source_page": src.get("page", ""),
+                "source_index": src.get("index", ""),
+                "source_size": src.get("size", ""),
+                "match_pdf": m.get("pdf", ""),
+                "match_page": m.get("page", ""),
+                "combined_score": m.get("combined_score", ""),
+                "clip_score": m.get("clip_score", ""),
+                "phash_similarity": ph.get("similarity", ""),
+                "phash_distance": ph.get("distance", ""),
+                "verdict": m.get("verdict", ""),
+            }
+            for key, _ in DESC_FIELDS:
+                row[key] = desc.get(key) or ""
+            writer.writerow(row)
     print(buf.getvalue().strip())
 
 
@@ -426,6 +483,33 @@ def md_scan_result(result: dict):
     print()
 
 
+def md_scan_pdf_result(result: dict):
+    pdf_info = result.get("pdf", {})
+    timing = result.get("timing", {})
+    print(f"## Scan-PDF: {pdf_info.get('filename')} ({pdf_info.get('images_extracted', '?')} images)")
+    print(f"*Extract {timing.get('extraction_ms', '?')}ms | Search {timing.get('search_ms', '?')}ms | Total {timing.get('total_ms', '?')}ms*\n")
+    for entry in result.get("results", []):
+        src = entry.get("source", {})
+        matches = entry.get("matches", [])
+        print(f"### Image #{src.get('index', 0) + 1} (page {src.get('page', '?')}, {src.get('size', '?')}) — {entry.get('total_matches', 0)} match(es)")
+        if matches:
+            headers = ["#", "PDF", "Page", "Combined", "CLIP", "pHash", "Verdict"]
+            rows = []
+            for i, m in enumerate(matches):
+                ph = m.get("phash", {})
+                rows.append([
+                    i + 1, m.get("pdf", "?"), m.get("page", "?"),
+                    f"{m.get('combined_score', 0):.4f}",
+                    f"{m.get('clip_score', 0):.4f}",
+                    f"{ph.get('similarity', 0):.4f}",
+                    m.get("verdict", "?"),
+                ])
+            print(md_table(headers, rows))
+        else:
+            print("*No matches*")
+        print()
+
+
 # ============================================================
 # Minimal output
 # ============================================================
@@ -478,6 +562,21 @@ def minimal_scan_result(result: dict):
     print(f"  ({total}ms)")
 
 
+def minimal_scan_pdf_result(result: dict):
+    pdf_info = result.get("pdf", {})
+    timing = result.get("timing", {})
+    print(f"  {pdf_info.get('filename', '?')} ({pdf_info.get('images_extracted', '?')} images)")
+    for entry in result.get("results", []):
+        src = entry.get("source", {})
+        matches = entry.get("matches", [])
+        if matches:
+            best = matches[0]
+            print(f"  img{src.get('index', 0) + 1} p{src.get('page', '?')} -> {best.get('pdf', '?')} p{best.get('page', '?')} | {best.get('combined_score', 0):.4f} {best.get('verdict', '?'):14s} ({len(matches)} match)")
+        else:
+            print(f"  img{src.get('index', 0) + 1} p{src.get('page', '?')} -> no match")
+    print(f"  ({timing.get('total_ms', '?')}ms)")
+
+
 # ============================================================
 # Output dispatcher
 # ============================================================
@@ -491,18 +590,22 @@ def output(result: dict, fmt: str, kind: str):
     csv_dispatch = {
         "match": csv_match_result, "extract": csv_extract_result,
         "batch": csv_batch_result, "scan": csv_scan_result,
+        "scan_pdf": csv_scan_pdf_result,
     }
     md_dispatch = {
         "match": md_match_result, "extract": md_extract_result,
         "batch": md_batch_result, "scan": md_scan_result,
+        "scan_pdf": md_scan_pdf_result,
     }
     minimal_dispatch = {
         "match": minimal_match_result, "extract": minimal_extract_result,
         "batch": minimal_batch_result, "scan": minimal_scan_result,
+        "scan_pdf": minimal_scan_pdf_result,
     }
     pretty_dispatch = {
         "match": pretty_match_result, "extract": pretty_extract_result,
         "batch": pretty_batch_result, "scan": pretty_scan_result,
+        "scan_pdf": pretty_scan_pdf_result,
         "index": pretty_index_result, "index_status": pretty_index_status,
     }
 
@@ -542,6 +645,13 @@ def strip_b64(result: dict, kind: str):
         for m in result.get("results", []):
             m.pop("zone_b64", None)
             m.pop("thumbnail_b64", None)
+    elif kind == "scan_pdf":
+        for entry in result.get("results", []):
+            src = entry.get("source", {})
+            src.pop("thumbnail_b64", None)
+            for m in entry.get("matches", []):
+                m.pop("zone_b64", None)
+                m.pop("thumbnail_b64", None)
 
 
 def cmd_health(fmt: str):
@@ -712,6 +822,19 @@ def cmd_scan(img_path: str, fmt: str, threshold: float = 0.70, top_k: int = 10, 
     output(result, fmt, "scan")
 
 
+def cmd_scan_pdf(pdf_path: str, fmt: str, threshold: float = 0.60, top_k: int = 5, tag: str = "", exclude_self: bool = True):
+    with open(pdf_path, "rb") as f_pdf:
+        files = {"pdf": (os.path.basename(pdf_path), f_pdf, "application/pdf")}
+        data = {"top_k": str(top_k), "threshold": str(threshold), "exclude_self": str(exclude_self).lower()}
+        if tag:
+            data["tag"] = tag
+        r = httpx.post(f"{API_URL}/scan-pdf", files=files, data=data, headers=api_headers(), timeout=TIMEOUT)
+    r.raise_for_status()
+    result = r.json()
+    strip_b64(result, "scan_pdf")
+    output(result, fmt, "scan_pdf")
+
+
 def cmd_index_remove(pdf_filename: str, fmt: str):
     r = httpx.delete(f"{API_URL}/index/{pdf_filename}", headers=api_headers(), timeout=TIMEOUT)
     r.raise_for_status()
@@ -798,6 +921,14 @@ def main():
         top_k = int(get_option(sys.argv, "top_k", "10"))
         tag = get_option(sys.argv, "tag", "")
         cmd_scan(args[1], fmt, threshold=threshold, top_k=top_k, tag=tag)
+    elif cmd == "scan-pdf":
+        if len(args) < 2:
+            print("Usage: python test_clip.py scan-pdf <pdf> [--json|--csv|--markdown|--minimal] [--threshold 0.60] [--top_k 5] [--tag TAG]")
+            sys.exit(1)
+        threshold = float(get_option(sys.argv, "threshold", "0.60"))
+        top_k = int(get_option(sys.argv, "top_k", "5"))
+        tag = get_option(sys.argv, "tag", "")
+        cmd_scan_pdf(args[1], fmt, threshold=threshold, top_k=top_k, tag=tag)
     elif cmd == "index-remove":
         if len(args) != 2:
             print("Usage: python test_clip.py index-remove <pdf_filename>")

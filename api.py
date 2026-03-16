@@ -40,11 +40,14 @@ QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
 QDRANT_COLLECTION = "pdf_images"
 CLIP_DIM = 768  # CLIP ViT-L/14 embedding dimension
 INDEXED_PDFS_DIR = "/app/indexed_pdfs"
-CLIP_WEIGHT = 0.60
-PHASH_WEIGHT = 0.40
-# When color mismatch (one B&W, one color), trust CLIP more
-CLIP_WEIGHT_MISMATCH = 0.85
-PHASH_WEIGHT_MISMATCH = 0.15
+# Triple-signal scoring: CLIP_color + CLIP_gray + pHash
+CLIP_WEIGHT = 0.55
+CLIP_GRAY_WEIGHT = 0.30
+PHASH_WEIGHT = 0.15
+# When color mismatch (one B&W, one color), trust grayscale CLIP more
+CLIP_WEIGHT_MISMATCH = 0.45
+CLIP_GRAY_WEIGHT_MISMATCH = 0.45
+PHASH_WEIGHT_MISMATCH = 0.10
 PHASH_HASH_SIZE = 16
 PHASH_MAX_BITS = PHASH_HASH_SIZE * PHASH_HASH_SIZE  # 256
 MIN_IMAGE_BYTES = 2048  # skip < 2KB (tracking pixels)
@@ -199,6 +202,7 @@ def embed_image(img: Image.Image) -> np.ndarray:
 
 
 QUERY_TARGETS = [96, 224, 512, 1024]
+MAX_UPSCALE_FACTOR = 3.0  # Skip multi-scale targets requiring >3x upscale
 
 
 def normalize_image(img: Image.Image) -> Image.Image:
@@ -214,15 +218,20 @@ def normalize_image(img: Image.Image) -> Image.Image:
 def embed_image_robust(img: Image.Image) -> np.ndarray:
     """Multi-scale CLIP embedding with CLAHE normalization for query images.
 
-    Embeds the image at multiple absolute sizes (96, 224, 512, 1024px longest
-    side) to cover the full range of indexed image resolutions. This makes the
-    query embedding match both small thumbnails and large scans equally well.
+    Embeds the image at multiple absolute sizes, adaptively skipping targets
+    that would require excessive upscaling (>MAX_UPSCALE_FACTOR). For small
+    images (e.g., 89x120 thumbnails), this avoids averaging in blurry
+    upscaled embeddings that degrade matching quality.
     """
     img = normalize_image(img)
     w, h = img.size
     longest = max(w, h)
+    # Only use scales that don't require excessive upscaling
+    targets = [t for t in QUERY_TARGETS if t <= longest * MAX_UPSCALE_FACTOR]
+    if not targets:
+        targets = [QUERY_TARGETS[0]]  # fallback: at least use smallest target
     embeddings = []
-    for target in QUERY_TARGETS:
+    for target in targets:
         scale = target / longest
         sw, sh = max(1, int(w * scale)), max(1, int(h * scale))
         scaled = img.resize((sw, sh), Image.LANCZOS)
@@ -232,6 +241,16 @@ def embed_image_robust(img: Image.Image) -> np.ndarray:
     if norm > 0:
         avg = avg / norm
     return avg
+
+
+def embed_image_gray(img: Image.Image) -> np.ndarray:
+    """Compute CLIP embedding on the grayscale version of an image.
+
+    This provides a color-invariant signal that improves matching between
+    images with different colorimetry or across color/B&W boundaries.
+    """
+    gray = img.convert("L").convert("RGB")
+    return embed_image(gray)
 
 
 def is_grayscale(img: Image.Image) -> bool:
@@ -298,10 +317,24 @@ def phash_similarity_from_hex(hex_a: str, hex_b: str) -> dict:
     return {"similarity": round(similarity, 4), "distance": distance, "verdict": verdict}
 
 
-def combined_score(clip_score: float, phash_sim: float, color_mismatch: bool = False) -> float:
+def combined_score(clip_score: float, phash_sim: float, color_mismatch: bool = False, clip_gray_score: float = 0.0) -> float:
+    """Triple-signal scoring: CLIP_color + CLIP_gray + pHash.
+
+    When clip_gray_score is 0 (not available, e.g., slow path without indexed
+    gray embedding), falls back to dual-signal with redistributed weights.
+    """
+    if clip_gray_score > 0:
+        if color_mismatch:
+            return round(CLIP_WEIGHT_MISMATCH * clip_score + CLIP_GRAY_WEIGHT_MISMATCH * clip_gray_score + PHASH_WEIGHT_MISMATCH * phash_sim, 4)
+        return round(CLIP_WEIGHT * clip_score + CLIP_GRAY_WEIGHT * clip_gray_score + PHASH_WEIGHT * phash_sim, 4)
+    # Fallback: no gray CLIP available — use dual signal with adjusted weights
     if color_mismatch:
-        return round(CLIP_WEIGHT_MISMATCH * clip_score + PHASH_WEIGHT_MISMATCH * phash_sim, 4)
-    return round(CLIP_WEIGHT * clip_score + PHASH_WEIGHT * phash_sim, 4)
+        w_clip = CLIP_WEIGHT_MISMATCH + CLIP_GRAY_WEIGHT_MISMATCH
+        w_phash = PHASH_WEIGHT_MISMATCH
+        return round(w_clip * clip_score + w_phash * phash_sim, 4)
+    w_clip = CLIP_WEIGHT + CLIP_GRAY_WEIGHT
+    w_phash = PHASH_WEIGHT
+    return round(w_clip * clip_score + w_phash * phash_sim, 4)
 
 
 def score_verdict(score: float) -> str:
@@ -848,6 +881,7 @@ async def match(
     pdf_bytes = await validate_upload_size(pdf, "PDF")
     ref_img = Image.open(io.BytesIO(jpg_bytes)).convert("RGB")
     ref_embedding = embed_image_robust(ref_img)
+    ref_gray_embedding = embed_image_gray(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
     ref_grayscale = is_grayscale(ref_img)
     pdf_filename = pdf.filename or "unknown.pdf"
@@ -890,7 +924,11 @@ async def match(
             phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
             pdf_grayscale = payload.get("is_grayscale", False)
             color_mismatch = ref_grayscale != pdf_grayscale
-            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
+            clip_gray_sim = 0.0
+            indexed_gray = payload.get("gray_embedding")
+            if indexed_gray is not None:
+                clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
+            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
 
             if combo >= threshold:
                 matches.append({
@@ -945,10 +983,12 @@ async def match(
     for pdf_img_info in pdf_images:
         pdf_img = pdf_img_info["image"]
         pdf_embedding = embed_image(pdf_img)
+        pdf_gray_embedding = embed_image_gray(pdf_img)
         clip_sim = cosine_similarity(ref_embedding, pdf_embedding)
+        clip_gray_sim = cosine_similarity(ref_gray_embedding, pdf_gray_embedding)
         phash_result = phash_similarity(ref_img, pdf_img)
         color_mismatch = is_grayscale(ref_img) != is_grayscale(pdf_img)
-        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
+        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
 
         if combo >= threshold:
             matches.append({
@@ -1069,6 +1109,7 @@ async def match_batch(
             img_bytes = await img_file.read()
             ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
             ref_embedding = embed_image_robust(ref_img)
+            ref_gray_embedding = embed_image_gray(ref_img)
             ref_phash_hex = compute_phash_hex(ref_img)
             ref_grayscale = is_grayscale(ref_img)
 
@@ -1090,7 +1131,11 @@ async def match_batch(
                 phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
                 pdf_grayscale = payload.get("is_grayscale", False)
                 color_mismatch = ref_grayscale != pdf_grayscale
-                combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
+                clip_gray_sim = 0.0
+                indexed_gray = payload.get("gray_embedding")
+                if indexed_gray is not None:
+                    clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
+                combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
                 if combo > best_score:
                     best_score = combo
                     best_match = {
@@ -1123,24 +1168,29 @@ async def match_batch(
     logger.info(f"Batch: PDF '{pdf_filename}' not in Qdrant — processing from scratch")
     pdf_images = extract_pdf_images(pdf_bytes)
     pdf_embeddings = []
+    pdf_gray_embeddings = []
     for pdf_img_info in pdf_images:
         emb = embed_image(pdf_img_info["image"])
+        gray_emb = embed_image_gray(pdf_img_info["image"])
         pdf_embeddings.append(emb)
+        pdf_gray_embeddings.append(gray_emb)
 
     results = []
     for img_file in images:
         img_bytes = await img_file.read()
         ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         ref_embedding = embed_image_robust(ref_img)
+        ref_gray_embedding = embed_image_gray(ref_img)
 
         best_match = None
         best_score = -1.0
 
         for i, pdf_img_info in enumerate(pdf_images):
             clip_sim = cosine_similarity(ref_embedding, pdf_embeddings[i])
+            clip_gray_sim = cosine_similarity(ref_gray_embedding, pdf_gray_embeddings[i])
             phash_result = phash_similarity(ref_img, pdf_img_info["image"])
             color_mismatch = is_grayscale(ref_img) != is_grayscale(pdf_img_info["image"])
-            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
+            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
 
             if combo > best_score:
                 best_score = combo
@@ -1305,6 +1355,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
         for img_idx, img_info in enumerate(pdf_images):
             pil_img = img_info["image"]
             embedding = embed_image(pil_img)
+            gray_embedding = embed_image_gray(pil_img)
             phash_hex = compute_phash_hex(pil_img)
             grayscale = is_grayscale(pil_img)
 
@@ -1352,6 +1403,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
                     "description": description,
                     "zone_b64": zone_b64,
                     "is_grayscale": grayscale,
+                    "gray_embedding": gray_embedding.tolist(),
                     "tag": tag,
                 },
             ))
@@ -1390,6 +1442,7 @@ async def scan(
     img_bytes = await validate_upload_size(image, "image")
     ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     ref_embedding = embed_image_robust(ref_img)
+    ref_gray_embedding = embed_image_gray(ref_img)
     ref_phash_hex = compute_phash_hex(ref_img)
     ref_grayscale = is_grayscale(ref_img)
 
@@ -1409,7 +1462,7 @@ async def scan(
     ).points
     t_search_end = time.time()
 
-    # Re-rank with combined score (CLIP + pHash)
+    # Re-rank with combined score (CLIP_color + CLIP_gray + pHash)
     candidates = []
     for result in search_results:
         clip_sim = result.score
@@ -1417,7 +1470,12 @@ async def scan(
         phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
         pdf_grayscale = payload.get("is_grayscale", False)
         color_mismatch = ref_grayscale != pdf_grayscale
-        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch)
+        # Grayscale CLIP similarity from indexed gray embedding
+        clip_gray_sim = 0.0
+        indexed_gray = payload.get("gray_embedding")
+        if indexed_gray is not None:
+            clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
+        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
 
         if combo >= threshold:
             candidates.append({
@@ -1468,6 +1526,120 @@ async def scan(
         "results": results,
         "timing": {
             "vector_search_ms": round((t_search_end - t_search_start) * 1000),
+            "total_ms": round((time.time() - t_start) * 1000),
+        },
+    }
+
+
+@app.post("/scan-pdf", dependencies=[Depends(verify_api_key)])
+async def scan_pdf(
+    pdf: UploadFile = File(...),
+    top_k: int = Form(5),
+    threshold: float = Form(0.60),
+    tag: str = Form(""),
+    exclude_self: bool = Form(True),
+):
+    """Scan an entire PDF against the index: extract images, search each one."""
+    t_start = time.time()
+
+    pdf_bytes = await validate_upload_size(pdf, "pdf")
+    pdf_filename = pdf.filename or "unknown.pdf"
+
+    # Extract images from PDF
+    t_extract_start = time.time()
+    extracted = extract_pdf_images(pdf_bytes)
+    t_extract_end = time.time()
+
+    # Search each extracted image against the index
+    t_search_start = time.time()
+    results = []
+
+    for img_idx, ext in enumerate(extracted):
+        img = ext["image"]
+
+        # Query embedding (multi-scale, like /scan)
+        query_embedding = embed_image_robust(img)
+        query_gray_embedding = embed_image_gray(img)
+        query_phash_hex = compute_phash_hex(img)
+        query_grayscale = is_grayscale(img)
+
+        # Build Qdrant filter
+        must_conditions = []
+        must_not_conditions = []
+        if tag:
+            must_conditions.append(FieldCondition(key="tag", match=MatchValue(value=tag)))
+        if exclude_self:
+            must_not_conditions.append(FieldCondition(key="pdf_filename", match=MatchValue(value=pdf_filename)))
+
+        query_filter = None
+        if must_conditions or must_not_conditions:
+            query_filter = Filter(
+                must=must_conditions if must_conditions else None,
+                must_not=must_not_conditions if must_not_conditions else None,
+            )
+
+        search_results = qdrant.query_points(
+            collection_name=QDRANT_COLLECTION,
+            query=query_embedding.tolist(),
+            query_filter=query_filter,
+            limit=top_k * 3,
+            with_payload=True,
+        ).points
+
+        # Re-rank with combined score (CLIP_color + CLIP_gray + pHash)
+        candidates = []
+        for result in search_results:
+            clip_sim = result.score
+            payload = result.payload
+            phash_result = phash_similarity_from_hex(query_phash_hex, payload["phash_hex"])
+            pdf_grayscale = payload.get("is_grayscale", False)
+            color_mismatch = query_grayscale != pdf_grayscale
+            clip_gray_sim = 0.0
+            indexed_gray = payload.get("gray_embedding")
+            if indexed_gray is not None:
+                clip_gray_sim = cosine_similarity(query_gray_embedding, np.array(indexed_gray, dtype=np.float32))
+            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
+
+            if combo >= threshold:
+                candidates.append({
+                    "clip_score": round(clip_sim, 4),
+                    "phash": phash_result,
+                    "combined_score": combo,
+                    "verdict": score_verdict(combo),
+                    "pdf": payload["pdf_filename"],
+                    "page": payload["page"],
+                    "description": payload.get("description"),
+                    "thumbnail_b64": payload.get("thumbnail_b64"),
+                    "zone_b64": payload.get("zone_b64"),
+                })
+
+        candidates.sort(key=lambda x: x["combined_score"], reverse=True)
+        candidates = candidates[:top_k]
+
+        # Source thumbnail
+        thumb = img.copy()
+        thumb.thumbnail((150, 150), Image.LANCZOS)
+        source_thumb_b64 = image_to_b64(thumb)
+
+        results.append({
+            "source": {
+                "page": ext["page"],
+                "index": img_idx,
+                "size": f"{img.width}x{img.height}",
+                "thumbnail_b64": source_thumb_b64,
+            },
+            "total_matches": len(candidates),
+            "matches": candidates,
+        })
+
+    t_search_end = time.time()
+
+    return {
+        "pdf": {"filename": pdf_filename, "images_extracted": len(extracted)},
+        "results": results,
+        "timing": {
+            "extraction_ms": round((t_extract_end - t_extract_start) * 1000),
+            "search_ms": round((t_search_end - t_search_start) * 1000),
             "total_ms": round((time.time() - t_start) * 1000),
         },
     }
