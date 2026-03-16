@@ -192,7 +192,7 @@ def display_description(desc: dict):
 # Tab 1: Single Match
 # ============================================================
 
-tab1, tab2, tab3, tab4 = st.tabs(["🎯 JPG → PDF", "📦 Batch", "📄 Preview PDF", "🔎 Search Indexed PDFs"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 JPG → PDF", "📦 Batch", "📄 Preview PDF", "🔎 Search Indexed PDFs", "📂 Scan PDF"])
 
 with tab1:
     st.header("Single Match — JPG vs PDF")
@@ -526,3 +526,79 @@ with tab4:
 
                         if m.get("zone_b64"):
                             st.image(b64_to_image(m["zone_b64"]), caption=f"Zone PDF — {m.get('pdf')} page {m.get('page', '?')}")
+
+
+# ============================================================
+# Tab 5: Scan PDF
+# ============================================================
+
+with tab5:
+    st.header("Scan PDF — Search all images from a PDF against the index")
+
+    pdf_scan = st.file_uploader("Upload PDF to scan", type=["pdf"], key="scan_pdf_file")
+
+    col_sp_opts = st.columns(3)
+    sp_top_k = col_sp_opts[0].number_input("Top K per image", min_value=1, max_value=20, value=5, key="sp_topk")
+    sp_threshold = col_sp_opts[1].number_input("Score threshold", min_value=0.0, max_value=1.0, value=0.60, step=0.05, key="sp_threshold")
+    sp_exclude_self = col_sp_opts[2].checkbox("Exclude self-matches", value=True, key="sp_exclude")
+
+    if pdf_scan:
+        if st.button("📂 Scan PDF", key="btn_scan_pdf", type="primary"):
+            with st.spinner(f"Scanning {pdf_scan.name} against index..."):
+                files = {"pdf": (pdf_scan.name, pdf_scan.getvalue(), "application/pdf")}
+                data = {
+                    "top_k": str(sp_top_k),
+                    "threshold": str(sp_threshold),
+                    "exclude_self": str(sp_exclude_self).lower(),
+                }
+
+                try:
+                    r = api_post("/scan-pdf", files=files, data=data, timeout=TIMEOUT * 5)
+                    r.raise_for_status()
+                    result = r.json()
+                except Exception as e:
+                    st.error(f"API error: {e}")
+                    st.stop()
+
+            # Timing
+            timing = result.get("timing", {})
+            tc = st.columns(3)
+            tc[0].metric("Extraction", f"{timing.get('extraction_ms', '?')} ms")
+            tc[1].metric("Search", f"{timing.get('search_ms', '?')} ms")
+            tc[2].metric("Total", f"{timing.get('total_ms', '?')} ms")
+
+            pdf_info = result.get("pdf", {})
+            st.markdown(f"**{pdf_info.get('filename')}** — {pdf_info.get('images_extracted', 0)} images extracted")
+
+            st.divider()
+
+            results_list = result.get("results", [])
+            if not results_list:
+                st.warning("No images extracted from PDF.")
+            else:
+                for entry in results_list:
+                    src = entry.get("source", {})
+                    matches = entry.get("matches", [])
+                    count = entry.get("total_matches", len(matches))
+                    match_summary = f"{count} match(es)" if count > 0 else "no match"
+                    label = f"Image #{src.get('index', 0) + 1} — Page {src.get('page', '?')} ({src.get('size', '?')}) — {match_summary}"
+
+                    with st.expander(label, expanded=(count > 0)):
+                        cols = st.columns([1, 3])
+                        with cols[0]:
+                            if src.get("thumbnail_b64"):
+                                st.image(b64_to_image(src["thumbnail_b64"]), caption="Source")
+
+                        with cols[1]:
+                            if not matches:
+                                st.info("No matches above threshold.")
+                            else:
+                                for i, m in enumerate(matches):
+                                    if i > 0:
+                                        st.markdown("---")
+                                    icon = "🏆" if i == 0 else f"#{i+1}"
+                                    st.markdown(f"**{icon} {m.get('pdf', '?')} p{m.get('page', '?')} — {m.get('combined_score', 0):.4f} ({m.get('verdict', '?')})**")
+                                    display_score(m)
+                                    display_description(m.get("description", {}))
+                                    if m.get("thumbnail_b64"):
+                                        st.image(b64_to_image(m["thumbnail_b64"]), caption=f"Match — {m.get('pdf')} page {m.get('page', '?')}")

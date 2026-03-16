@@ -10,3 +10,4 @@ claude.md
 *.png
 !docs/*.png
 !docs/*.svg
+.test
