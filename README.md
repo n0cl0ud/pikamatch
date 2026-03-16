@@ -2,13 +2,13 @@
 
 Local AI pipeline that matches images (JPG/PNG) against images inside PDF catalogues and extracts their associated descriptions. Runs 100% locally on GPU via Docker Compose.
 
-Built around [CLIP ViT-L/14](https://github.com/openai/CLIP) for visual matching and [Qwen2.5-VL-7B](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct-AWQ) for structured field extraction, with a hybrid indexation + instant search architecture: PDFs are indexed once (CLIP embeddings + VLM descriptions stored in Qdrant), then searched instantly via vector similarity.
+Built around [CLIP ViT-L/14](https://github.com/openai/CLIP) for visual matching and [Qwen3-VL-8B](https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-FP8) for structured field extraction, with a hybrid indexation + instant search architecture: PDFs are indexed once (CLIP embeddings + VLM descriptions stored in Qdrant), then searched instantly via vector similarity.
 
 ## Architecture
 
 ### Indexation Pipeline
 
-PDFs are processed once: images are extracted (with OpenCV segmentation for full-page scans), embedded with CLIP, hashed with pHash, analyzed for grayscale, and their descriptions extracted by the VLM. Everything is stored in Qdrant for instant retrieval.
+PDFs are processed once: images are extracted (with OpenCV segmentation for full-page scans), embedded with CLIP (color + grayscale), hashed with pHash, analyzed for grayscale, and their descriptions extracted by the VLM. Everything is stored in Qdrant for instant retrieval.
 
 <p align="center">
   <a href="docs/indexation-flow.svg">
@@ -18,7 +18,7 @@ PDFs are processed once: images are extracted (with OpenCV segmentation for full
 
 ### Search Pipeline
 
-Query images are embedded with CLIP and matched against Qdrant vectors via approximate nearest neighbor search. Results are re-ranked using a combined CLIP + pHash score with grayscale-aware weight adaptation. No VLM call needed — descriptions are pre-computed.
+Query images are preprocessed with CLAHE normalization, then embedded at adaptive multi-scale via CLIP. A grayscale CLIP embedding is also computed. Results are re-ranked using a triple-signal score (CLIP_color + CLIP_gray + pHash) with grayscale-aware weight adaptation. No VLM call needed — descriptions are pre-computed.
 
 <p align="center">
   <a href="docs/search-flow.svg">
@@ -119,10 +119,10 @@ curl -X POST http://localhost:11434/match \
 
 The combined score adapts weights based on color compatibility between query and indexed images:
 
-| Condition | CLIP Weight | pHash Weight | Rationale |
-|-----------|:-----------:|:------------:|-----------|
-| Same colorspace (both color or both B&W) | 60% | 40% | Standard scoring |
-| Color mismatch (one color, one grayscale) | 85% | 15% | pHash unreliable across colorspaces |
+| Condition | CLIP_color | CLIP_gray | pHash | Rationale |
+|-----------|:----------:|:---------:|:-----:|-----------|
+| Same colorspace (both color or both B&W) | 55% | 30% | 15% | Standard triple-signal scoring |
+| Color mismatch (one color, one grayscale) | 45% | 45% | 10% | CLIP_gray compensates for colorspace difference |
 
 Grayscale detection happens automatically: at index time (stored per image in Qdrant) and at query time. The weight switch is per image pair.
 
@@ -144,14 +144,14 @@ Grayscale detection happens automatically: at index time (stored per image in Qd
 
 | Service | Image | Internal | Host | GPU |
 |---------|-------|:--------:|:----:|:---:|
-| `qwen-vl` | `vllm/vllm-openai:latest` | 8000 | **8001** | ~5 GB |
+| `qwen-vl` | `vllm/vllm-openai:v0.15.0` | 8000 | **8001** | ~10 GB |
 | `qdrant` | `qdrant/qdrant:latest` | 6333 | **9000** | - |
 | `clip-api` | custom (nvidia/cuda) | 8002 | **11434** | ~1.5 GB |
 | `ui` | custom (python:3.11-slim) | 8501 | **1234** | - |
 
 **Dependency chain:** `qwen-vl` + `qdrant` → `clip-api` → `ui`
 
-**Total VRAM:** ~6.5 GB (comfortable on RTX 5080 16 GB)
+**Total VRAM:** ~11.5 GB (tight on RTX 5080 16 GB)
 
 ## Tech Stack
 
@@ -162,7 +162,7 @@ Grayscale detection happens automatically: at index time (stored per image in Qd
 | PDF extraction | PyMuPDF (fitz) | Extract embedded images + their bounding boxes |
 | Segmentation | OpenCV (contour detection) | Split full-page scans into individual artworks |
 | Vector DB | Qdrant | Store embeddings + payloads, ANN search |
-| Description reading | Qwen2.5-VL-7B-Instruct-AWQ via vLLM | Vision LLM reads PDF page zones to extract fields |
+| Description reading | Qwen3-VL-8B-Instruct-FP8 via vLLM | Vision LLM reads PDF page zones to extract fields |
 | API | FastAPI | REST API for matching, extraction, batch |
 | UI | Streamlit | Drag-and-drop testing interface |
 | Serving | Docker Compose with NVIDIA runtime | Everything containerized |
@@ -176,7 +176,7 @@ pikamatch/
 ├── Dockerfile.api              # CLIP + pHash + OpenCV + FastAPI
 ├── Dockerfile.ui               # Streamlit
 ├── api.py                      # Main API — matching, indexing, segmentation, VLM
-├── ui.py                       # Streamlit UI (3 tabs)
+├── ui.py                       # Streamlit UI (5 tabs)
 ├── test_clip.py                # CLI tool
 └── docs/
     ├── architecture.mmd        # Docker services (Mermaid source)
