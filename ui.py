@@ -129,9 +129,10 @@ with st.sidebar:
     st.divider()
     st.header("Pipeline")
     st.markdown("""
-**Phase 1** — CLIP + pHash (~50ms)
-- Matching visuel rapide
-- Score = 60% CLIP + 40% pHash
+**Phase 1** — Triple-Signal (~50ms)
+- CLIP color + CLIP gray + pHash
+- Same: 55% / 30% / 15%
+- Mismatch: 45% / 45% / 10%
 
 **Phase 2** — Qwen3-VL (~3-5s)
 - Lecture de la zone PDF autour de l'image
@@ -149,12 +150,13 @@ def b64_to_image(b64_str: str) -> Image.Image:
 
 def display_score(match_data: dict):
     """Display score breakdown for a match."""
-    cols = st.columns(4)
+    cols = st.columns(5)
     cols[0].metric("Combined", f"{match_data['combined_score']:.4f}")
     cols[1].metric("CLIP", f"{match_data['clip_score']:.4f}")
+    cols[2].metric("CLIP Gray", f"{match_data.get('clip_gray_score', 0):.4f}")
     phash = match_data.get("phash", {})
-    cols[2].metric("pHash", f"{phash.get('similarity', 0):.4f}")
-    cols[3].metric("Verdict", match_data.get("verdict", "?"))
+    cols[3].metric("pHash", f"{phash.get('similarity', 0):.4f}")
+    cols[4].metric("Verdict", match_data.get("verdict", "?"))
 
 
 def display_description(desc: dict):
@@ -479,15 +481,18 @@ with tab4:
         "Upload image to search", type=["jpg", "jpeg", "png", "webp", "bmp"], key="scan_img",
     )
 
-    col_scan_opts = st.columns(2)
-    scan_top_k = col_scan_opts[0].number_input("Top K results", min_value=1, max_value=50, value=10, key="scan_topk")
+    col_scan_opts = st.columns(3)
+    scan_top_k = col_scan_opts[0].number_input("Top K results", min_value=1, max_value=100, value=10, key="scan_topk")
     scan_threshold = col_scan_opts[1].number_input("Score threshold", min_value=0.0, max_value=1.0, value=0.70, step=0.05, key="scan_threshold")
+    scan_tag = col_scan_opts[2].text_input("Tag filter", value="", key="scan_tag")
 
     if scan_image:
         if st.button("🔍 Search", key="btn_scan", type="primary"):
             with st.spinner("Searching indexed PDFs..."):
                 files = {"image": (scan_image.name, scan_image.getvalue(), scan_image.type or "image/jpeg")}
                 data = {"top_k": str(scan_top_k), "threshold": str(scan_threshold)}
+                if scan_tag:
+                    data["tag"] = scan_tag
 
                 try:
                     r = api_post("/scan", files=files, data=data, timeout=TIMEOUT * 3)
@@ -537,10 +542,11 @@ with tab5:
 
     pdf_scan = st.file_uploader("Upload PDF to scan", type=["pdf"], key="scan_pdf_file")
 
-    col_sp_opts = st.columns(3)
-    sp_top_k = col_sp_opts[0].number_input("Top K per image", min_value=1, max_value=20, value=5, key="sp_topk")
+    col_sp_opts = st.columns(4)
+    sp_top_k = col_sp_opts[0].number_input("Top K per image", min_value=1, max_value=100, value=5, key="sp_topk")
     sp_threshold = col_sp_opts[1].number_input("Score threshold", min_value=0.0, max_value=1.0, value=0.60, step=0.05, key="sp_threshold")
-    sp_exclude_self = col_sp_opts[2].checkbox("Exclude self-matches", value=True, key="sp_exclude")
+    sp_tag = col_sp_opts[2].text_input("Tag filter", value="", key="sp_tag")
+    sp_exclude_self = col_sp_opts[3].checkbox("Skip source PDF", value=True, key="sp_exclude")
 
     if pdf_scan:
         if st.button("📂 Scan PDF", key="btn_scan_pdf", type="primary"):
@@ -551,6 +557,8 @@ with tab5:
                     "threshold": str(sp_threshold),
                     "exclude_self": str(sp_exclude_self).lower(),
                 }
+                if sp_tag:
+                    data["tag"] = sp_tag
 
                 try:
                     r = api_post("/scan-pdf", files=files, data=data, timeout=TIMEOUT * 5)
