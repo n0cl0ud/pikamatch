@@ -4,14 +4,17 @@ Phase 1: CLIP + pHash (fast visual matching)
 Phase 2: Qwen2.5-VL (structured field extraction from PDF zones)
 """
 
+import asyncio
 import base64
 import hashlib
+import hmac
 import io
 import json
 import logging
 import os
 import re
 import time
+from collections import Counter
 from typing import Optional
 
 import uuid
@@ -23,7 +26,7 @@ import httpx
 import imagehash
 import numpy as np
 import torch
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image
 from qdrant_client import QdrantClient
@@ -57,10 +60,16 @@ MAX_VLM_PX = 1200
 VLM_TIMEOUT = 120.0  # seconds — prevent infinite hangs on VLM calls
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB per file
 MAX_CONCURRENT_REQUESTS = 4  # prevent GPU overload
+MAX_TOP_K = 100
+MAX_PDF_PAGES = 200
+MAX_PDF_IMAGES = 500
+MAX_BATCH_IMAGES = 50
+MAX_INDEX_PDFS = 10
+MAX_IMAGE_PIXELS = 50_000_000  # 50 megapixels — decompression bomb guard
 
 # --- Security ---
 API_KEY = os.getenv("API_KEY", "")
-_active_requests = 0
+_request_semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Sub-image segmentation constants ---
 PAGE_COVERAGE_THRESHOLD = 0.60    # Image covering >60% of page triggers segmentation
@@ -155,25 +164,20 @@ async def verify_api_key(x_api_key: str = Header(None)):
     """Verify API key if one is configured. Skip auth if API_KEY is empty."""
     if not API_KEY:
         return  # No key configured — open access (dev mode)
-    if x_api_key != API_KEY:
+    if not hmac.compare_digest(x_api_key or "", API_KEY):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 # --- Concurrency guard middleware ---
 @app.middleware("http")
 async def concurrency_guard(request: Request, call_next):
-    global _active_requests
     # Skip guard for health checks
     if request.url.path == "/health":
         return await call_next(request)
-    if _active_requests >= MAX_CONCURRENT_REQUESTS:
+    if _request_semaphore.locked():
         return JSONResponse(status_code=503, content={"detail": "Server busy, try again later"})
-    _active_requests += 1
-    try:
-        response = await call_next(request)
-        return response
-    finally:
-        _active_requests -= 1
+    async with _request_semaphore:
+        return await call_next(request)
 
 
 # --- Upload size validation helper ---
@@ -349,6 +353,110 @@ def score_verdict(score: float) -> str:
     return "different"
 
 
+def rerank_from_qdrant(
+    search_results,
+    ref_phash_hex: str,
+    ref_gray_embedding: np.ndarray,
+    ref_grayscale: bool,
+    threshold: float,
+    top_k: int,
+    extra_fields: Optional[dict] = None,
+) -> list[dict]:
+    """Re-rank Qdrant search results with triple-signal scoring.
+
+    Used by /match fast, /match-batch fast, /scan, /scan-pdf.
+    Returns sorted list of match dicts with clip_gray_score included.
+    """
+    matches = []
+    for result in search_results:
+        clip_sim = result.score
+        payload = result.payload
+        phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
+        pdf_grayscale = payload.get("is_grayscale", False)
+        color_mismatch = ref_grayscale != pdf_grayscale
+        clip_gray_sim = 0.0
+        indexed_gray = payload.get("gray_embedding")
+        if indexed_gray is not None:
+            clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
+        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
+
+        if combo >= threshold:
+            match = {
+                "clip_score": round(clip_sim, 4),
+                "clip_gray_score": round(clip_gray_sim, 4),
+                "phash": phash_result,
+                "combined_score": combo,
+                "verdict": score_verdict(combo),
+                "page": payload["page"],
+                "pdf": payload.get("pdf_filename"),
+                "width": payload.get("width"),
+                "height": payload.get("height"),
+                "description": payload.get("description"),
+                "thumbnail_b64": payload.get("thumbnail_b64"),
+                "zone_b64": payload.get("zone_b64"),
+            }
+            if extra_fields:
+                match.update(extra_fields)
+            matches.append(match)
+
+    matches.sort(key=lambda x: x["combined_score"], reverse=True)
+    return matches[:top_k]
+
+
+def rerank_from_memory(
+    pdf_images: list[dict],
+    pdf_embeddings: list[np.ndarray],
+    pdf_gray_embeddings: list[np.ndarray],
+    ref_embedding: np.ndarray,
+    ref_gray_embedding: np.ndarray,
+    ref_img: Image.Image,
+    ref_grayscale: bool,
+    threshold: float,
+    top_k: int,
+) -> list[dict]:
+    """Re-rank in-memory PDF images with triple-signal scoring.
+
+    Used by /match slow and /match-batch slow paths.
+    Returns sorted list of match dicts with clip_gray_score included.
+    """
+    matches = []
+    for i, pdf_img_info in enumerate(pdf_images):
+        pdf_img = pdf_img_info["image"]
+        clip_sim = cosine_similarity(ref_embedding, pdf_embeddings[i])
+        clip_gray_sim = cosine_similarity(ref_gray_embedding, pdf_gray_embeddings[i])
+        phash_result = phash_similarity(ref_img, pdf_img)
+        color_mismatch = ref_grayscale != is_grayscale(pdf_img)
+        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
+
+        if combo >= threshold:
+            matches.append({
+                "clip_score": round(clip_sim, 4),
+                "clip_gray_score": round(clip_gray_sim, 4),
+                "phash": phash_result,
+                "combined_score": combo,
+                "verdict": score_verdict(combo),
+                "page": pdf_img_info["page"],
+                "bbox": pdf_img_info.get("bbox"),
+                "segmented": pdf_img_info.get("segmented", False),
+                "xref": pdf_img_info.get("xref"),
+                "width": pdf_img_info.get("width"),
+                "height": pdf_img_info.get("height"),
+                "size_vs_ref": {
+                    "ref": f"{ref_img.width}x{ref_img.height}",
+                    "pdf": f"{pdf_img_info['width']}x{pdf_img_info['height']}",
+                    "scale_factor": round(
+                        (pdf_img_info["width"] * pdf_img_info["height"])
+                        / max(ref_img.width * ref_img.height, 1),
+                        4,
+                    ),
+                },
+                "pdf_image": pdf_img,
+            })
+
+    matches.sort(key=lambda x: x["combined_score"], reverse=True)
+    return matches[:top_k]
+
+
 def is_full_page_image(bbox, page_rect) -> bool:
     """Return True if bbox covers >60% of the page area (likely a full-page scan)."""
     if bbox is None or page_rect is None:
@@ -517,8 +625,11 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     results = []
     seen_hashes = set()
+    total_pages = min(len(doc), MAX_PDF_PAGES)
+    if len(doc) > MAX_PDF_PAGES:
+        logger.warning(f"PDF has {len(doc)} pages, capping at {MAX_PDF_PAGES}")
 
-    for page_idx in range(len(doc)):
+    for page_idx in range(total_pages):
         page = doc[page_idx]
         images = page.get_images(full=True)
 
@@ -544,6 +655,9 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                 continue
 
             if pil_img.width < MIN_IMAGE_DIM or pil_img.height < MIN_IMAGE_DIM:
+                continue
+            if pil_img.width * pil_img.height > MAX_IMAGE_PIXELS:
+                logger.warning(f"Skipping oversized image: {pil_img.width}x{pil_img.height}")
                 continue
 
             rects = page.get_image_rects(xref)
@@ -592,10 +706,16 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                     "segmented": False,
                 })
 
+            if len(results) >= MAX_PDF_IMAGES:
+                logger.warning(f"PDF image cap reached ({MAX_PDF_IMAGES}), stopping extraction")
+                break
+        if len(results) >= MAX_PDF_IMAGES:
+            break
+
     # Fallback for scanned PDFs: render pages as images
     if not results:
         logger.info("No embedded images found — falling back to page renders")
-        for page_idx in range(len(doc)):
+        for page_idx in range(total_pages):
             page = doc[page_idx]
             pix = page.get_pixmap(dpi=RENDER_DPI)
             img_bytes = pix.tobytes("png")
@@ -630,11 +750,13 @@ def extract_pdf_images(pdf_bytes: bytes) -> list[dict]:
                     "height": pil_img.height,
                     "segmented": False,
                 })
+            if len(results) >= MAX_PDF_IMAGES:
+                logger.warning(f"PDF image cap reached ({MAX_PDF_IMAGES}), stopping fallback extraction")
+                break
 
     doc.close()
 
     # Mark images on dense pages (3+ images) as needing tight VLM zones
-    from collections import Counter
     page_counts = Counter(r["page"] for r in results)
     for r in results:
         if page_counts[r["page"]] >= 3:
@@ -871,9 +993,10 @@ async def health(x_api_key: str = Header(None)):
 async def match(
     jpg: UploadFile = File(...),
     pdf: UploadFile = File(...),
-    top_k: int = Form(3),
-    threshold: float = Form(0.0),
+    top_k: int = Form(3, ge=1, le=MAX_TOP_K),
+    threshold: float = Form(0.0, ge=0.0, le=1.0),
 ):
+
     t_start = time.time()
 
     # Read and validate inputs
@@ -917,41 +1040,19 @@ async def match(
         ).points
         t_search_end = time.time()
 
-        matches = []
-        for result in search_results:
-            clip_sim = result.score
-            payload = result.payload
-            phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
-            pdf_grayscale = payload.get("is_grayscale", False)
-            color_mismatch = ref_grayscale != pdf_grayscale
-            clip_gray_sim = 0.0
-            indexed_gray = payload.get("gray_embedding")
-            if indexed_gray is not None:
-                clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
-            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
-
-            if combo >= threshold:
-                matches.append({
-                    "combined_score": combo,
-                    "clip_score": round(clip_sim, 4),
-                    "phash": phash_result,
-                    "verdict": score_verdict(combo),
-                    "page": payload["page"],
-                    "size_vs_ref": {
-                        "ref": f"{ref_img.width}x{ref_img.height}",
-                        "pdf": f"{payload['width']}x{payload['height']}",
-                        "scale_factor": round(
-                            (payload["width"] * payload["height"])
-                            / max(ref_img.width * ref_img.height, 1),
-                            4,
-                        ),
-                    },
-                    "description": payload.get("description") or {"error": "no description indexed"},
-                    "zone_b64": payload.get("zone_b64"),
-                })
-
-        matches.sort(key=lambda x: x["combined_score"], reverse=True)
-        matches = matches[:top_k]
+        matches = rerank_from_qdrant(
+            search_results, ref_phash_hex, ref_gray_embedding, ref_grayscale,
+            threshold, top_k,
+            extra_fields={"size_vs_ref": {"ref": f"{ref_img.width}x{ref_img.height}"}},
+        )
+        # Enrich size_vs_ref with per-match PDF dimensions
+        for m in matches:
+            m["size_vs_ref"]["pdf"] = f"{m['width']}x{m['height']}"
+            m["size_vs_ref"]["scale_factor"] = round(
+                (m["width"] * m["height"]) / max(ref_img.width * ref_img.height, 1), 4
+            )
+            if not m.get("description"):
+                m["description"] = {"error": "no description indexed"}
 
         # Count total images for this PDF
         count_result = qdrant.count(
@@ -979,41 +1080,17 @@ async def match(
     t_clip_start = time.time()
     pdf_images = extract_pdf_images(pdf_bytes)
 
-    matches = []
+    pdf_embeddings = []
+    pdf_gray_embeddings = []
     for pdf_img_info in pdf_images:
-        pdf_img = pdf_img_info["image"]
-        pdf_embedding = embed_image(pdf_img)
-        pdf_gray_embedding = embed_image_gray(pdf_img)
-        clip_sim = cosine_similarity(ref_embedding, pdf_embedding)
-        clip_gray_sim = cosine_similarity(ref_gray_embedding, pdf_gray_embedding)
-        phash_result = phash_similarity(ref_img, pdf_img)
-        color_mismatch = is_grayscale(ref_img) != is_grayscale(pdf_img)
-        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
+        pdf_embeddings.append(embed_image(pdf_img_info["image"]))
+        pdf_gray_embeddings.append(embed_image_gray(pdf_img_info["image"]))
 
-        if combo >= threshold:
-            matches.append({
-                "clip_score": round(clip_sim, 4),
-                "phash": phash_result,
-                "combined_score": combo,
-                "verdict": score_verdict(combo),
-                "page": pdf_img_info["page"],
-                "bbox": pdf_img_info["bbox"],
-                "segmented": pdf_img_info.get("segmented", False),
-                "xref": pdf_img_info.get("xref"),
-                "pdf_image": pdf_img,
-                "size_vs_ref": {
-                    "ref": f"{ref_img.width}x{ref_img.height}",
-                    "pdf": f"{pdf_img_info['width']}x{pdf_img_info['height']}",
-                    "scale_factor": round(
-                        (pdf_img_info["width"] * pdf_img_info["height"])
-                        / max(ref_img.width * ref_img.height, 1),
-                        4,
-                    ),
-                },
-            })
-
-    matches.sort(key=lambda x: x["combined_score"], reverse=True)
-    matches = matches[:top_k]
+    matches = rerank_from_memory(
+        pdf_images, pdf_embeddings, pdf_gray_embeddings,
+        ref_embedding, ref_gray_embedding, ref_img, ref_grayscale,
+        threshold, top_k,
+    )
     t_clip_end = time.time()
 
     # VLM extraction
@@ -1029,7 +1106,8 @@ async def match(
                     m["description"] = await call_vlm(zone_img)
                 except Exception as e:
                     logger.error(f"VLM call failed: {e}")
-                    m["description"] = {"error": str(e)}
+                    logger.error(f"VLM call failed: {e}")
+                    m["description"] = {"error": "description extraction failed"}
             else:
                 m["zone_b64"] = None
                 m["description"] = {"error": "no zone available"}
@@ -1071,8 +1149,10 @@ async def match(
 async def match_batch(
     pdf: UploadFile = File(...),
     images: list[UploadFile] = File(...),
-    threshold: float = Form(0.70),
+    threshold: float = Form(0.70, ge=0.0, le=1.0),
 ):
+    if len(images) > MAX_BATCH_IMAGES:
+        raise HTTPException(status_code=400, detail=f"Too many images ({len(images)}), max {MAX_BATCH_IMAGES}")
     t_start = time.time()
     pdf_bytes = await validate_upload_size(pdf, "PDF")
     pdf_filename = pdf.filename or "unknown.pdf"
@@ -1106,7 +1186,7 @@ async def match_batch(
 
         results = []
         for img_file in images:
-            img_bytes = await img_file.read()
+            img_bytes = await validate_upload_size(img_file, f"image '{img_file.filename}'")
             ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
             ref_embedding = embed_image_robust(ref_img)
             ref_gray_embedding = embed_image_gray(ref_img)
@@ -1123,34 +1203,17 @@ async def match_batch(
                 with_payload=True,
             ).points
 
+            ranked = rerank_from_qdrant(
+                search_results, ref_phash_hex, ref_gray_embedding, ref_grayscale,
+                threshold=0.0, top_k=1,
+                extra_fields={"size_vs_ref": {"ref": f"{ref_img.width}x{ref_img.height}"}},
+            )
             best_match = None
-            best_score = -1.0
-            for result in search_results:
-                clip_sim = result.score
-                payload = result.payload
-                phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
-                pdf_grayscale = payload.get("is_grayscale", False)
-                color_mismatch = ref_grayscale != pdf_grayscale
-                clip_gray_sim = 0.0
-                indexed_gray = payload.get("gray_embedding")
-                if indexed_gray is not None:
-                    clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
-                combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
-                if combo > best_score:
-                    best_score = combo
-                    best_match = {
-                        "clip_score": round(clip_sim, 4),
-                        "phash": phash_result,
-                        "combined_score": combo,
-                        "verdict": score_verdict(combo),
-                        "page": payload["page"],
-                        "size_vs_ref": {
-                            "ref": f"{ref_img.width}x{ref_img.height}",
-                            "pdf": f"{payload['width']}x{payload['height']}",
-                        },
-                        "description": payload.get("description") or {"error": "no description indexed"},
-                        "zone_b64": payload.get("zone_b64"),
-                    }
+            if ranked:
+                best_match = ranked[0]
+                best_match["size_vs_ref"]["pdf"] = f"{best_match['width']}x{best_match['height']}"
+                if not best_match.get("description"):
+                    best_match["description"] = {"error": "no description indexed"}
 
             entry = {"filename": img_file.filename, "matched": False, "match": None}
             if best_match and best_match["combined_score"] >= threshold:
@@ -1177,37 +1240,18 @@ async def match_batch(
 
     results = []
     for img_file in images:
-        img_bytes = await img_file.read()
+        img_bytes = await validate_upload_size(img_file, f"image '{img_file.filename}'")
         ref_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         ref_embedding = embed_image_robust(ref_img)
         ref_gray_embedding = embed_image_gray(ref_img)
 
-        best_match = None
-        best_score = -1.0
-
-        for i, pdf_img_info in enumerate(pdf_images):
-            clip_sim = cosine_similarity(ref_embedding, pdf_embeddings[i])
-            clip_gray_sim = cosine_similarity(ref_gray_embedding, pdf_gray_embeddings[i])
-            phash_result = phash_similarity(ref_img, pdf_img_info["image"])
-            color_mismatch = is_grayscale(ref_img) != is_grayscale(pdf_img_info["image"])
-            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
-
-            if combo > best_score:
-                best_score = combo
-                best_match = {
-                    "clip_score": round(clip_sim, 4),
-                    "phash": phash_result,
-                    "combined_score": combo,
-                    "verdict": score_verdict(combo),
-                    "page": pdf_img_info["page"],
-                    "bbox": pdf_img_info["bbox"],
-                    "segmented": pdf_img_info.get("segmented", False),
-                    "xref": pdf_img_info.get("xref"),
-                    "size_vs_ref": {
-                        "ref": f"{ref_img.width}x{ref_img.height}",
-                        "pdf": f"{pdf_img_info['width']}x{pdf_img_info['height']}",
-                    },
-                }
+        ref_grayscale = is_grayscale(ref_img)
+        ranked = rerank_from_memory(
+            pdf_images, pdf_embeddings, pdf_gray_embeddings,
+            ref_embedding, ref_gray_embedding, ref_img, ref_grayscale,
+            threshold=0.0, top_k=1,
+        )
+        best_match = ranked[0] if ranked else None
 
         entry = {"filename": img_file.filename, "matched": False, "match": None}
 
@@ -1226,7 +1270,8 @@ async def match_batch(
                     try:
                         best_match["description"] = await call_vlm(zone_img)
                     except Exception as e:
-                        best_match["description"] = {"error": str(e)}
+                        logger.error(f"VLM call failed: {e}")
+                        best_match["description"] = {"error": "description extraction failed"}
                 else:
                     best_match["description"] = {"error": "no zone available"}
                     best_match["zone_b64"] = None
@@ -1272,7 +1317,8 @@ async def extract(pdf: UploadFile = File(...)):
             try:
                 entry["description"] = await call_vlm(zone_img)
             except Exception as e:
-                entry["description"] = {"error": str(e)}
+                logger.error(f"VLM call failed: {e}")
+                entry["description"] = {"error": "description extraction failed"}
         else:
             entry["zone_b64"] = None
             entry["description"] = {"error": "no bounding box"}
@@ -1293,6 +1339,8 @@ async def extract(pdf: UploadFile = File(...)):
 @app.post("/index", dependencies=[Depends(verify_api_key)])
 async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(False), tag: str = Form("")):
     """Index one or more PDFs into Qdrant for later searching."""
+    if len(pdfs) > MAX_INDEX_PDFS:
+        raise HTTPException(status_code=400, detail=f"Too many PDFs ({len(pdfs)}), max {MAX_INDEX_PDFS}")
     t_start = time.time()
     indexed = []
     skipped = []
@@ -1338,7 +1386,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
 
         try:
             # Save PDF to disk for later VLM rendering
-            safe_name = pdf_filename.replace("/", "_").replace("\\", "_")
+            safe_name = re.sub(r'[^\w.\- ]', '_', os.path.basename(pdf_filename)).strip(". ")[:200] or "unknown.pdf"
             pdf_path = os.path.join(INDEXED_PDFS_DIR, safe_name)
             with open(pdf_path, "wb") as f:
                 f.write(pdf_bytes)
@@ -1386,7 +1434,7 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
                     logger.info(f"  VLM extracted description for image {img_idx + 1}/{len(pdf_images)} in {pdf_filename}")
                 except Exception as e:
                     logger.error(f"  VLM failed for image {img_idx + 1} in {pdf_filename}: {e}")
-                    description = {"error": str(e)}
+                    description = {"error": "description extraction failed"}
 
             point_id = str(uuid.uuid4())
             points.append(PointStruct(
@@ -1431,8 +1479,8 @@ async def index_pdfs(pdfs: list[UploadFile] = File(...), force: bool = Form(Fals
 @app.post("/scan", dependencies=[Depends(verify_api_key)])
 async def scan(
     image: UploadFile = File(...),
-    top_k: int = Form(10),
-    threshold: float = Form(0.70),
+    top_k: int = Form(10, ge=1, le=MAX_TOP_K),
+    threshold: float = Form(0.70, ge=0.0, le=1.0),
     tag: str = Form(""),
 ):
     """Search indexed PDFs for matches to the uploaded image."""
@@ -1463,62 +1511,26 @@ async def scan(
     t_search_end = time.time()
 
     # Re-rank with combined score (CLIP_color + CLIP_gray + pHash)
-    candidates = []
-    for result in search_results:
-        clip_sim = result.score
-        payload = result.payload
-        phash_result = phash_similarity_from_hex(ref_phash_hex, payload["phash_hex"])
-        pdf_grayscale = payload.get("is_grayscale", False)
-        color_mismatch = ref_grayscale != pdf_grayscale
-        # Grayscale CLIP similarity from indexed gray embedding
-        clip_gray_sim = 0.0
-        indexed_gray = payload.get("gray_embedding")
-        if indexed_gray is not None:
-            clip_gray_sim = cosine_similarity(ref_gray_embedding, np.array(indexed_gray, dtype=np.float32))
-        combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
-
-        if combo >= threshold:
-            candidates.append({
-                "clip_score": round(clip_sim, 4),
-                "phash": phash_result,
-                "combined_score": combo,
-                "verdict": score_verdict(combo),
-                "pdf": payload["pdf_filename"],
-                "page": payload["page"],
-                "width": payload["width"],
-                "height": payload["height"],
-                "thumbnail_b64": payload.get("thumbnail_b64"),
-                "description": payload.get("description"),
-                "zone_b64": payload.get("zone_b64"),
-            })
-
-    # Sort by combined score and take top_k
-    candidates.sort(key=lambda x: x["combined_score"], reverse=True)
-    candidates = candidates[:top_k]
+    candidates = rerank_from_qdrant(
+        search_results, ref_phash_hex, ref_gray_embedding, ref_grayscale,
+        threshold, top_k,
+    )
 
     # Build results — descriptions already in Qdrant, no VLM call needed
     results = []
     for match in candidates:
-        results.append({
-            "pdf": match["pdf"],
-            "page": match["page"],
-            "combined_score": match["combined_score"],
-            "clip_score": match["clip_score"],
-            "phash": match["phash"],
-            "verdict": match["verdict"],
-            "size_vs_ref": {
-                "ref": f"{ref_img.width}x{ref_img.height}",
-                "pdf": f"{match['width']}x{match['height']}",
-                "scale_factor": round(
-                    (match["width"] * match["height"])
-                    / max(ref_img.width * ref_img.height, 1),
-                    4,
-                ),
-            },
-            "thumbnail_b64": match.get("thumbnail_b64"),
-            "description": match.get("description") or {"error": "no description indexed"},
-            "zone_b64": match.get("zone_b64"),
-        })
+        match["size_vs_ref"] = {
+            "ref": f"{ref_img.width}x{ref_img.height}",
+            "pdf": f"{match['width']}x{match['height']}",
+            "scale_factor": round(
+                (match["width"] * match["height"])
+                / max(ref_img.width * ref_img.height, 1),
+                4,
+            ),
+        }
+        if not match.get("description"):
+            match["description"] = {"error": "no description indexed"}
+        results.append(match)
 
     return {
         "reference": {"filename": image.filename, "size": f"{ref_img.width}x{ref_img.height}"},
@@ -1534,8 +1546,8 @@ async def scan(
 @app.post("/scan-pdf", dependencies=[Depends(verify_api_key)])
 async def scan_pdf(
     pdf: UploadFile = File(...),
-    top_k: int = Form(5),
-    threshold: float = Form(0.60),
+    top_k: int = Form(5, ge=1, le=MAX_TOP_K),
+    threshold: float = Form(0.60, ge=0.0, le=1.0),
     tag: str = Form(""),
     exclude_self: bool = Form(True),
 ):
@@ -1587,34 +1599,10 @@ async def scan_pdf(
         ).points
 
         # Re-rank with combined score (CLIP_color + CLIP_gray + pHash)
-        candidates = []
-        for result in search_results:
-            clip_sim = result.score
-            payload = result.payload
-            phash_result = phash_similarity_from_hex(query_phash_hex, payload["phash_hex"])
-            pdf_grayscale = payload.get("is_grayscale", False)
-            color_mismatch = query_grayscale != pdf_grayscale
-            clip_gray_sim = 0.0
-            indexed_gray = payload.get("gray_embedding")
-            if indexed_gray is not None:
-                clip_gray_sim = cosine_similarity(query_gray_embedding, np.array(indexed_gray, dtype=np.float32))
-            combo = combined_score(clip_sim, phash_result["similarity"], color_mismatch=color_mismatch, clip_gray_score=clip_gray_sim)
-
-            if combo >= threshold:
-                candidates.append({
-                    "clip_score": round(clip_sim, 4),
-                    "phash": phash_result,
-                    "combined_score": combo,
-                    "verdict": score_verdict(combo),
-                    "pdf": payload["pdf_filename"],
-                    "page": payload["page"],
-                    "description": payload.get("description"),
-                    "thumbnail_b64": payload.get("thumbnail_b64"),
-                    "zone_b64": payload.get("zone_b64"),
-                })
-
-        candidates.sort(key=lambda x: x["combined_score"], reverse=True)
-        candidates = candidates[:top_k]
+        candidates = rerank_from_qdrant(
+            search_results, query_phash_hex, query_gray_embedding, query_grayscale,
+            threshold, top_k,
+        )
 
         # Source thumbnail
         thumb = img.copy()
@@ -1646,7 +1634,7 @@ async def scan_pdf(
 
 
 @app.get("/index/status", dependencies=[Depends(verify_api_key)])
-async def index_status(limit: int = 25, offset: int = 0):
+async def index_status(limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0)):
     """Return status of indexed PDFs with pagination (default 25 per page).
 
     Uses filesystem (indexed_pdfs dir) for PDF list and Qdrant count() per PDF
@@ -1658,7 +1646,7 @@ async def index_status(limit: int = 25, offset: int = 0):
     # List PDFs from filesystem (instant, no Qdrant scroll needed)
     all_pdf_names = sorted(
         f for f in os.listdir(INDEXED_PDFS_DIR)
-        if os.path.isfile(os.path.join(INDEXED_PDFS_DIR, f))
+        if not f.startswith('.') and os.path.isfile(os.path.join(INDEXED_PDFS_DIR, f))
     )
     total_pdfs = len(all_pdf_names)
     page_names = all_pdf_names[offset:offset + limit]
@@ -1691,6 +1679,8 @@ async def index_status(limit: int = 25, offset: int = 0):
 @app.delete("/index/{pdf_filename}", dependencies=[Depends(verify_api_key)])
 async def delete_pdf_index(pdf_filename: str):
     """Remove all vectors for a specific PDF from the index."""
+    if '..' in pdf_filename or not re.match(r'^[\w.\- ]+$', pdf_filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     # Delete points matching the pdf_filename
     qdrant.delete(
         collection_name=QDRANT_COLLECTION,
@@ -1700,7 +1690,7 @@ async def delete_pdf_index(pdf_filename: str):
     )
 
     # Remove stored PDF file
-    safe_name = pdf_filename.replace("/", "_").replace("\\", "_")
+    safe_name = re.sub(r'[^\w.\- ]', '_', os.path.basename(pdf_filename)).strip(". ")[:200] or "unknown.pdf"
     pdf_path = os.path.join(INDEXED_PDFS_DIR, safe_name)
     if os.path.exists(pdf_path):
         os.remove(pdf_path)
