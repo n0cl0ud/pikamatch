@@ -5,7 +5,7 @@ graph TB
 
     subgraph "Docker Network (pikamatch)"
         subgraph "GPU Services"
-            QWEN["qwen-vl<br/>vLLM + Qwen2.5-VL-7B-AWQ<br/>~5 GB VRAM<br/>:8000 → :8001"]
+            QWEN["qwen-vl<br/>vLLM + Qwen3-VL-8B-FP8<br/>~10 GB VRAM<br/>:8000 → :8001"]
             CLIP["clip-api<br/>CLIP + pHash + OpenCV<br/>~1.5 GB VRAM<br/>:8002 → :11434"]
         end
 

@@ -15,7 +15,7 @@ graph TB
 
     FILTER --> MERGE["Merge Overlaps<br/>IoU >0.50<br/>Containment >0.80"]
 
-    MERGE --> CROP["Crop + Convert<br/>px → PDF coords<br/>(x * 72/dpi)"]
+    MERGE --> CROP["Crop + Convert<br/>px → PDF coords<br/>(scale = page_w/img_w)"]
 
     CROP --> OUTPUT["Sub-images<br/>(5-15 per page)"]
 
